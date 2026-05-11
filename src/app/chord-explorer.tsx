@@ -42,6 +42,8 @@ export function ChordExplorer() {
   const [loadedProgressionId, setLoadedProgressionId] = useState<string | null>(null);
   const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(null);
   const [playingProgressionIndex, setPlayingProgressionIndex] = useState<number | null>(null);
+  const [isPlayingProgression, setIsPlayingProgression] = useState(false);
+  const [isLooping, setIsLooping] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(85);
   const [tempo, setTempo] = useState(100);
@@ -50,6 +52,7 @@ export function ChordExplorer() {
   const [isPending, startTransition] = useTransition();
   const audioContextRef = useRef<AudioContext | null>(null);
   const playbackTimeoutsRef = useRef<number[]>([]);
+  const playbackOscillatorsRef = useRef<OscillatorNode[]>([]);
 
   const scale = getScale(tonic, mode);
   const chords = getDiatonicChords({ tonic, mode, chordType });
@@ -73,6 +76,14 @@ export function ChordExplorer() {
     return () => {
       playbackTimeoutsRef.current.forEach(window.clearTimeout);
       playbackTimeoutsRef.current = [];
+      playbackOscillatorsRef.current.forEach((oscillator) => {
+        try {
+          oscillator.stop();
+        } catch {
+          // The oscillator may already have finished naturally.
+        }
+      });
+      playbackOscillatorsRef.current = [];
     };
   }, []);
 
@@ -107,12 +118,33 @@ export function ChordExplorer() {
     playbackTimeoutsRef.current = [];
   }
 
+  function stopPlaybackOscillators() {
+    playbackOscillatorsRef.current.forEach((oscillator) => {
+      try {
+        oscillator.stop();
+      } catch {
+        // The oscillator may already have finished naturally.
+      }
+    });
+    playbackOscillatorsRef.current = [];
+  }
+
   function playProgression() {
+    if (isPlayingProgression) {
+      stopProgressionPlayback();
+      return;
+    }
+
+    startProgressionPlayback();
+  }
+
+  function startProgressionPlayback() {
     if (progression.length === 0) {
       return;
     }
 
     clearPlaybackTimers();
+    setIsPlayingProgression(true);
 
     if (isMuted) {
       setIsMuted(false);
@@ -121,49 +153,78 @@ export function ChordExplorer() {
     const audioContext = getAudioContext();
     const settings = { isMuted: false, volume, tempo, audioArt };
     const chordDuration = getChordPlaybackDuration(settings);
-    const startTime = audioContext.currentTime + 0.05;
+    const cycleDuration = progression.length * chordDuration;
 
-    progression.forEach((chord, index) => {
-      playChordPreview({
-        audioContext,
-        chord,
-        rootFloorKey,
-        settings,
-        startTime: startTime + index * chordDuration,
+    function scheduleCycle(cycleStartTime: number) {
+      progression.forEach((chord, index) => {
+        const chordStartTime = cycleStartTime + index * chordDuration;
+
+        playbackOscillatorsRef.current.push(
+          ...playChordPreview({
+            audioContext,
+            chord,
+            rootFloorKey,
+            settings,
+            startTime: chordStartTime,
+          }),
+        );
+
+        playbackTimeoutsRef.current.push(
+          window.setTimeout(
+            () => {
+              setPlayingProgressionIndex(index);
+              setSelectedDegree(chord.degree);
+            },
+            Math.max(0, (chordStartTime - audioContext.currentTime) * 1000),
+          ),
+        );
       });
 
       playbackTimeoutsRef.current.push(
-        window.setTimeout(() => {
-          setPlayingProgressionIndex(index);
-          setSelectedDegree(chord.degree);
-        }, index * chordDuration * 1000),
-      );
-    });
+        window.setTimeout(
+          () => {
+            setPlayingProgressionIndex(null);
 
-    playbackTimeoutsRef.current.push(
-      window.setTimeout(() => {
-        setPlayingProgressionIndex(null);
-      }, progression.length * chordDuration * 1000),
-    );
+            if (isLooping) {
+              scheduleCycle(audioContext.currentTime + 0.05);
+              return;
+            }
+
+            setIsPlayingProgression(false);
+            playbackOscillatorsRef.current = [];
+          },
+          Math.max(0, (cycleStartTime + cycleDuration - audioContext.currentTime) * 1000),
+        ),
+      );
+    }
+
+    scheduleCycle(audioContext.currentTime + 0.05);
+  }
+
+  function stopProgressionPlayback() {
+    clearPlaybackTimers();
+    stopPlaybackOscillators();
+    setIsPlayingProgression(false);
+    setPlayingProgressionIndex(null);
   }
 
   function addChord(chord: DiatonicChord) {
+    stopProgressionPlayback();
     setProgression((currentProgression) => [...currentProgression, chord]);
   }
 
   function clearProgression() {
-    clearPlaybackTimers();
-    setPlayingProgressionIndex(null);
+    stopProgressionPlayback();
     setProgression([]);
   }
 
   function removeChord(indexToRemove: number) {
-    clearPlaybackTimers();
-    setPlayingProgressionIndex(null);
+    stopProgressionPlayback();
     setProgression((currentProgression) => currentProgression.filter((_, index) => index !== indexToRemove));
   }
 
   function moveChord(indexToMove: number, direction: -1 | 1) {
+    stopProgressionPlayback();
     setProgression((currentProgression) => {
       const targetIndex = indexToMove + direction;
 
@@ -212,8 +273,7 @@ export function ChordExplorer() {
   }
 
   function loadProgression(savedProgression: SavedProgression) {
-    clearPlaybackTimers();
-    setPlayingProgressionIndex(null);
+    stopProgressionPlayback();
     setTonic(savedProgression.tonic);
     setMode(savedProgression.mode);
     setChordType(savedProgression.chordType);
@@ -353,12 +413,23 @@ export function ChordExplorer() {
             <span>{loadedProgressionId ? "Loaded Take" : "Sequence Slots"}</span>
             <div className="flex gap-3">
               <button
+                className={`underline decoration-[#f05a28] underline-offset-4 disabled:cursor-not-allowed disabled:opacity-40 ${
+                  isLooping ? "text-[#f05a28]" : "text-[#fffaf0]"
+                }`}
+                type="button"
+                disabled={progression.length === 0}
+                aria-pressed={isLooping}
+                onClick={() => setIsLooping((currentIsLooping) => !currentIsLooping)}
+              >
+                Loop
+              </button>
+              <button
                 className="text-[#fffaf0] underline decoration-[#f05a28] underline-offset-4 disabled:cursor-not-allowed disabled:opacity-40"
                 type="button"
                 disabled={progression.length === 0}
                 onClick={playProgression}
               >
-                Play
+                {isPlayingProgression ? "Stop" : "Play"}
               </button>
               <button
                 className="text-[#fffaf0] underline decoration-[#f05a28] underline-offset-4 disabled:cursor-not-allowed disabled:opacity-40"

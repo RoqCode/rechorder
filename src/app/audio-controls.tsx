@@ -3,6 +3,7 @@ const AUDIO_ART_LABELS: Record<AudioArt, string> = {
   piano: "Piano",
   pad: "Pad",
   arp: "Arp",
+  strings: "Strings",
 };
 
 type AudioControlsProps = {

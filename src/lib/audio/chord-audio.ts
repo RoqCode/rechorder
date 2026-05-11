@@ -1,7 +1,7 @@
 import type { DiatonicChord } from "@/lib/music/chords";
 import { getKeyRelativeRootPositionKeyIds } from "@/lib/music/keyboard";
 
-export const AUDIO_ARTS = ["piano", "pad", "arp"] as const;
+export const AUDIO_ARTS = ["piano", "pad", "arp", "strings"] as const;
 export type AudioArt = (typeof AUDIO_ARTS)[number];
 
 export type AudioSettings = {
@@ -44,7 +44,7 @@ export function getChordPlaybackDuration(settings: AudioSettings) {
 
 export function playChordPreview({ audioContext, chord, rootFloorKey, settings, startTime }: PlayChordPreviewInput) {
   if (settings.isMuted) {
-    return;
+    return [];
   }
 
   if (audioContext.state === "suspended") {
@@ -55,28 +55,50 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
   const chordKeyIds = [...getKeyRelativeRootPositionKeyIds(chord.notes, rootFloorKey)];
   const frequencies = chordKeyIds.map(getKeyFrequency);
   const baseGain = settings.volume / 100;
+  const oscillators: OscillatorNode[] = [];
 
   if (settings.audioArt === "arp") {
     const stepDuration = 60 / settings.tempo / 2;
     frequencies.forEach((frequency, index) => {
-      playTone(audioContext, frequency, now + index * stepDuration, {
-        attack: 0.01,
-        duration: stepDuration * 1.35,
-        gain: baseGain * 1.1,
-        type: "triangle",
-      });
+      oscillators.push(
+        playTone(audioContext, frequency, now + index * stepDuration, {
+          attack: 0.01,
+          duration: stepDuration * 1.35,
+          gain: baseGain * 1.1,
+          type: "triangle",
+        }),
+      );
     });
-    return;
+    return oscillators;
+  }
+
+  if (settings.audioArt === "strings") {
+    const duration = getChordPlaybackDuration(settings);
+    frequencies.forEach((frequency) => {
+      oscillators.push(
+        playTone(audioContext, frequency, now, {
+          attack: 0,
+          duration,
+          gain: baseGain * 0.18,
+          type: "triangle",
+        }),
+      );
+    });
+    return oscillators;
   }
 
   frequencies.forEach((frequency, index) => {
-    playTone(audioContext, frequency, now + index * 0.01, {
-      attack: settings.audioArt === "pad" ? 0.18 : 0.015,
-      duration: settings.audioArt === "pad" ? 2.2 : 1.2,
-      gain: settings.audioArt === "pad" ? baseGain * 0.28 : baseGain * 0.42,
-      type: settings.audioArt === "pad" ? "sine" : "triangle",
-    });
+    oscillators.push(
+      playTone(audioContext, frequency, now + index * 0.01, {
+        attack: settings.audioArt === "pad" ? 0.18 : 0.015,
+        duration: settings.audioArt === "pad" ? 2.2 : 1.2,
+        gain: settings.audioArt === "pad" ? baseGain * 0.28 : baseGain * 0.42,
+        type: settings.audioArt === "pad" ? "sine" : "triangle",
+      }),
+    );
   });
+
+  return oscillators;
 }
 
 type PlayToneOptions = {
@@ -92,13 +114,20 @@ function playTone(audioContext: AudioContext, frequency: number, startTime: numb
 
   oscillator.type = options.type;
   oscillator.frequency.value = frequency;
-  gain.gain.setValueAtTime(0, startTime);
-  gain.gain.linearRampToValueAtTime(options.gain, startTime + options.attack);
-  gain.gain.exponentialRampToValueAtTime(0.001, startTime + options.duration);
+  if (options.attack === 0) {
+    gain.gain.setValueAtTime(options.gain, startTime);
+    gain.gain.setValueAtTime(options.gain, startTime + options.duration);
+  } else {
+    gain.gain.setValueAtTime(0, startTime);
+    gain.gain.linearRampToValueAtTime(options.gain, startTime + options.attack);
+    gain.gain.exponentialRampToValueAtTime(0.001, startTime + options.duration);
+  }
 
   oscillator.connect(gain).connect(audioContext.destination);
   oscillator.start(startTime);
   oscillator.stop(startTime + options.duration + 0.05);
+
+  return oscillator;
 }
 
 function getKeyFrequency(keyId: string) {
