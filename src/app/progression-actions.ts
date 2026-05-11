@@ -28,6 +28,10 @@ export type CreateProgressionInput = {
   notes: string;
 };
 
+export type UpdateProgressionInput = CreateProgressionInput & {
+  id: string;
+};
+
 export async function listProgressions() {
   const rows = await db.select().from(progressions).orderBy(desc(progressions.createdAt));
 
@@ -37,14 +41,7 @@ export async function listProgressions() {
 export async function createProgression(input: CreateProgressionInput) {
   const name = input.name.trim();
   const notes = input.notes.trim();
-
-  if (!name) {
-    throw new Error("Progression name is required");
-  }
-
-  if (input.chords.length === 0) {
-    throw new Error("Progression needs at least one chord");
-  }
+  validateProgressionInput({ ...input, name, notes });
 
   const [row] = await db
     .insert(progressions)
@@ -57,6 +54,34 @@ export async function createProgression(input: CreateProgressionInput) {
       notes: notes || null,
     })
     .returning();
+
+  revalidatePath("/");
+
+  return toSavedProgression(row);
+}
+
+export async function updateProgression(input: UpdateProgressionInput) {
+  const name = input.name.trim();
+  const notes = input.notes.trim();
+  validateProgressionInput({ ...input, name, notes });
+
+  const [row] = await db
+    .update(progressions)
+    .set({
+      name,
+      tonic: input.tonic,
+      mode: input.mode,
+      chordType: input.chordType,
+      chords: input.chords,
+      notes: notes || null,
+      updatedAt: new Date(),
+    })
+    .where(eq(progressions.id, input.id))
+    .returning();
+
+  if (!row) {
+    throw new Error("Progression not found");
+  }
 
   revalidatePath("/");
 
@@ -76,4 +101,14 @@ function toSavedProgression(row: typeof progressions.$inferSelect): SavedProgres
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+function validateProgressionInput(input: CreateProgressionInput) {
+  if (!input.name) {
+    throw new Error("Progression name is required");
+  }
+
+  if (input.chords.length === 0) {
+    throw new Error("Progression needs at least one chord");
+  }
 }

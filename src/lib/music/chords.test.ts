@@ -15,6 +15,10 @@ describe("getScale", () => {
     expect(getScale("Gb", "major")).toEqual(["Gb", "Ab", "Bb", "Cb", "Db", "Eb", "F"]);
   });
 
+  it("spells Cb major without negative modulo drift", () => {
+    expect(getScale("Cb", "major")).toEqual(["Cb", "Db", "Eb", "Fb", "Gb", "Ab", "Bb"]);
+  });
+
   it("spells A natural minor without accidentals", () => {
     expect(getScale("A", "natural_minor")).toEqual(["A", "B", "C", "D", "E", "F", "G"]);
   });

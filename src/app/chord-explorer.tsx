@@ -14,7 +14,7 @@ import {
 } from "@/lib/music/chords";
 import { getCenteredRootFloorKey } from "@/lib/music/keyboard";
 import { PianoKeyboard } from "./piano-keyboard";
-import { createProgression, deleteProgression, listProgressions, type SavedProgression } from "./progression-actions";
+import { createProgression, deleteProgression, listProgressions, type SavedProgression, updateProgression } from "./progression-actions";
 
 const MODE_LABELS: Record<MusicMode, string> = {
   major: "Major",
@@ -35,6 +35,7 @@ export function ChordExplorer() {
   const [library, setLibrary] = useState<SavedProgression[]>([]);
   const [progressionName, setProgressionName] = useState("");
   const [progressionNotes, setProgressionNotes] = useState("");
+  const [loadedProgressionId, setLoadedProgressionId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -88,23 +89,34 @@ export function ChordExplorer() {
   function saveProgression() {
     startTransition(async () => {
       try {
-        await createProgression({
+        const input = {
           name: progressionName,
           tonic,
           mode,
           chordType,
           chords: progression,
           notes: progressionNotes,
-        });
+        };
 
-        setProgressionName("");
-        setProgressionNotes("");
+        const savedProgression = loadedProgressionId
+          ? await updateProgression({ ...input, id: loadedProgressionId })
+          : await createProgression(input);
+
+        setLoadedProgressionId(savedProgression.id);
         setLibrary(await listProgressions());
-        setStatusMessage("Saved");
+        setStatusMessage(loadedProgressionId ? "Updated" : "Saved");
       } catch (error) {
         setStatusMessage(error instanceof Error ? error.message : "Could not save progression");
       }
     });
+  }
+
+  function startNewProgression() {
+    setProgression([]);
+    setProgressionName("");
+    setProgressionNotes("");
+    setLoadedProgressionId(null);
+    setStatusMessage("New take");
   }
 
   function loadProgression(savedProgression: SavedProgression) {
@@ -114,6 +126,7 @@ export function ChordExplorer() {
     setProgression(savedProgression.chords);
     setProgressionName(savedProgression.name);
     setProgressionNotes(savedProgression.notes ?? "");
+    setLoadedProgressionId(savedProgression.id);
     setSelectedDegree(savedProgression.chords[0]?.degree ?? 1);
     setStatusMessage("Loaded");
   }
@@ -123,6 +136,9 @@ export function ChordExplorer() {
       try {
         await deleteProgression(id);
         setLibrary(await listProgressions());
+        if (loadedProgressionId === id) {
+          setLoadedProgressionId(null);
+        }
         setStatusMessage("Deleted");
       } catch (error) {
         setStatusMessage(error instanceof Error ? error.message : "Could not delete progression");
@@ -226,15 +242,20 @@ export function ChordExplorer() {
 
         <div className="border-2 border-[#171512] bg-[#171512] p-3 text-[#fffaf0]">
           <div className="mb-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.22em]">
-            <span>Sequence Slots</span>
-            <button
-              className="text-[#fffaf0] underline decoration-[#f05a28] underline-offset-4 disabled:cursor-not-allowed disabled:opacity-40"
-              type="button"
-              disabled={progression.length === 0}
-              onClick={() => setProgression([])}
-            >
-              Clear
-            </button>
+            <span>{loadedProgressionId ? "Loaded Take" : "Sequence Slots"}</span>
+            <div className="flex gap-3">
+              <button
+                className="text-[#fffaf0] underline decoration-[#f05a28] underline-offset-4 disabled:cursor-not-allowed disabled:opacity-40"
+                type="button"
+                disabled={progression.length === 0}
+                onClick={() => setProgression([])}
+              >
+                Clear
+              </button>
+              <button className="text-[#fffaf0] underline decoration-[#f05a28] underline-offset-4" type="button" onClick={startNewProgression}>
+                New
+              </button>
+            </div>
           </div>
           <div className="flex min-h-14 flex-wrap gap-2">
             {progression.length === 0 ? (
@@ -308,7 +329,7 @@ export function ChordExplorer() {
               disabled={isPending || progression.length === 0 || progressionName.trim().length === 0}
               onClick={saveProgression}
             >
-              Save
+              {loadedProgressionId ? "Update" : "Save"}
             </button>
           </div>
           {statusMessage ? <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#bfb7aa]">{statusMessage}</p> : null}

@@ -139,7 +139,7 @@ function parseNote(note: string) {
 }
 
 function getClosestAccidentalOffset(offset: number) {
-  const normalized = ((offset + 6) % 12) - 6;
+  const normalized = normalizeSemitone(offset + 6) - 6;
 
   if (normalized < -2 || normalized > 2) {
     throw new Error(`Cannot spell note with accidental offset ${normalized}`);
