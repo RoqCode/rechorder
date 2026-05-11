@@ -12,7 +12,7 @@ import {
   MUSIC_MODES,
   type MusicMode,
 } from "@/lib/music/chords";
-import { type AudioArt, playChordPreview } from "@/lib/audio/chord-audio";
+import { type AudioArt, getChordPlaybackDuration, playChordPreview } from "@/lib/audio/chord-audio";
 import { getCenteredRootFloorKey } from "@/lib/music/keyboard";
 import { AudioControls } from "./audio-controls";
 import { ControlGroup, SegmentedControl } from "./form-controls";
@@ -41,6 +41,7 @@ export function ChordExplorer() {
   const [progressionNotes, setProgressionNotes] = useState("");
   const [loadedProgressionId, setLoadedProgressionId] = useState<string | null>(null);
   const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(null);
+  const [playingProgressionIndex, setPlayingProgressionIndex] = useState<number | null>(null);
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(85);
   const [tempo, setTempo] = useState(100);
@@ -48,6 +49,7 @@ export function ChordExplorer() {
   const [statusMessage, setStatusMessage] = useState("");
   const [isPending, startTransition] = useTransition();
   const audioContextRef = useRef<AudioContext | null>(null);
+  const playbackTimeoutsRef = useRef<number[]>([]);
 
   const scale = getScale(tonic, mode);
   const chords = getDiatonicChords({ tonic, mode, chordType });
@@ -65,6 +67,13 @@ export function ChordExplorer() {
         setStatusMessage(error instanceof Error ? error.message : "Could not load library");
       }
     });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      playbackTimeoutsRef.current.forEach(window.clearTimeout);
+      playbackTimeoutsRef.current = [];
+    };
   }, []);
 
   function selectMode(nextMode: MusicMode) {
@@ -93,11 +102,64 @@ export function ChordExplorer() {
     return audioContextRef.current;
   }
 
+  function clearPlaybackTimers() {
+    playbackTimeoutsRef.current.forEach(window.clearTimeout);
+    playbackTimeoutsRef.current = [];
+  }
+
+  function playProgression() {
+    if (progression.length === 0) {
+      return;
+    }
+
+    clearPlaybackTimers();
+
+    if (isMuted) {
+      setIsMuted(false);
+    }
+
+    const audioContext = getAudioContext();
+    const settings = { isMuted: false, volume, tempo, audioArt };
+    const chordDuration = getChordPlaybackDuration(settings);
+    const startTime = audioContext.currentTime + 0.05;
+
+    progression.forEach((chord, index) => {
+      playChordPreview({
+        audioContext,
+        chord,
+        rootFloorKey,
+        settings,
+        startTime: startTime + index * chordDuration,
+      });
+
+      playbackTimeoutsRef.current.push(
+        window.setTimeout(() => {
+          setPlayingProgressionIndex(index);
+          setSelectedDegree(chord.degree);
+        }, index * chordDuration * 1000),
+      );
+    });
+
+    playbackTimeoutsRef.current.push(
+      window.setTimeout(() => {
+        setPlayingProgressionIndex(null);
+      }, progression.length * chordDuration * 1000),
+    );
+  }
+
   function addChord(chord: DiatonicChord) {
     setProgression((currentProgression) => [...currentProgression, chord]);
   }
 
+  function clearProgression() {
+    clearPlaybackTimers();
+    setPlayingProgressionIndex(null);
+    setProgression([]);
+  }
+
   function removeChord(indexToRemove: number) {
+    clearPlaybackTimers();
+    setPlayingProgressionIndex(null);
     setProgression((currentProgression) => currentProgression.filter((_, index) => index !== indexToRemove));
   }
 
@@ -142,7 +204,7 @@ export function ChordExplorer() {
   }
 
   function startNewProgression() {
-    setProgression([]);
+    clearProgression();
     setProgressionName("");
     setProgressionNotes("");
     setLoadedProgressionId(null);
@@ -150,6 +212,8 @@ export function ChordExplorer() {
   }
 
   function loadProgression(savedProgression: SavedProgression) {
+    clearPlaybackTimers();
+    setPlayingProgressionIndex(null);
     setTonic(savedProgression.tonic);
     setMode(savedProgression.mode);
     setChordType(savedProgression.chordType);
@@ -292,7 +356,15 @@ export function ChordExplorer() {
                 className="text-[#fffaf0] underline decoration-[#f05a28] underline-offset-4 disabled:cursor-not-allowed disabled:opacity-40"
                 type="button"
                 disabled={progression.length === 0}
-                onClick={() => setProgression([])}
+                onClick={playProgression}
+              >
+                Play
+              </button>
+              <button
+                className="text-[#fffaf0] underline decoration-[#f05a28] underline-offset-4 disabled:cursor-not-allowed disabled:opacity-40"
+                type="button"
+                disabled={progression.length === 0}
+                onClick={clearProgression}
               >
                 Clear
               </button>
@@ -308,20 +380,33 @@ export function ChordExplorer() {
               </div>
             ) : (
               progression.map((chord, index) => (
-                <div className="relative min-h-16 min-w-32 border-2 border-[#fffaf0] p-2 pr-7" key={`${chord.degree}-${index}`}>
+                <div
+                  className={`relative min-h-16 min-w-32 border-2 border-[#fffaf0] p-2 pr-7 ${
+                    playingProgressionIndex === index ? "bg-[#f05a28] text-[#171512]" : ""
+                  }`}
+                  key={`${chord.degree}-${index}`}
+                >
                   <button
-                    className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center border border-[#fffaf0] font-mono text-[10px] leading-none hover:bg-[#fffaf0] hover:text-[#171512]"
+                    className={`absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center border font-mono text-[10px] leading-none hover:bg-[#fffaf0] hover:text-[#171512] ${
+                      playingProgressionIndex === index ? "border-[#171512]" : "border-[#fffaf0]"
+                    }`}
                     type="button"
                     aria-label={`Remove ${chord.chordName} from sequence`}
                     onClick={() => removeChord(index)}
                   >
                     x
                   </button>
-                  <span className="block font-mono text-[10px] tracking-[0.2em] text-[#bfb7aa]">
+                  <span
+                    className={`block font-mono text-[10px] tracking-[0.2em] ${playingProgressionIndex === index ? "text-[#171512]" : "text-[#bfb7aa]"}`}
+                  >
                     {index + 1} | {chord.romanNumeral}
                   </span>
                   <strong className="mt-1 block text-lg leading-none tracking-[-0.06em]">{chord.chordName}</strong>
-                  <span className="mt-1 block font-mono text-[9px] leading-tight tracking-[0.08em] text-[#bfb7aa]">
+                  <span
+                    className={`mt-1 block font-mono text-[9px] leading-tight tracking-[0.08em] ${
+                      playingProgressionIndex === index ? "text-[#171512]" : "text-[#bfb7aa]"
+                    }`}
+                  >
                     {chord.notes.join(" ")}
                   </span>
                   <div className="mt-2 flex gap-1">

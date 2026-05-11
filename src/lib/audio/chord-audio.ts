@@ -16,6 +16,7 @@ type PlayChordPreviewInput = {
   chord: DiatonicChord;
   rootFloorKey: string;
   settings: AudioSettings;
+  startTime?: number;
 };
 
 const KEY_SEMITONES: Record<string, number> = {
@@ -33,7 +34,15 @@ const KEY_SEMITONES: Record<string, number> = {
   B: 11,
 };
 
-export function playChordPreview({ audioContext, chord, rootFloorKey, settings }: PlayChordPreviewInput) {
+export function getChordPlaybackDuration(settings: AudioSettings) {
+  if (settings.audioArt === "arp") {
+    return (60 / settings.tempo / 2) * 4;
+  }
+
+  return 60 / settings.tempo;
+}
+
+export function playChordPreview({ audioContext, chord, rootFloorKey, settings, startTime }: PlayChordPreviewInput) {
   if (settings.isMuted) {
     return;
   }
@@ -42,7 +51,7 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings }
     void audioContext.resume();
   }
 
-  const now = audioContext.currentTime;
+  const now = startTime ?? audioContext.currentTime;
   const chordKeyIds = [...getKeyRelativeRootPositionKeyIds(chord.notes, rootFloorKey)];
   const frequencies = chordKeyIds.map(getKeyFrequency);
   const baseGain = settings.volume / 100;
@@ -53,7 +62,7 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings }
       playTone(audioContext, frequency, now + index * stepDuration, {
         attack: 0.01,
         duration: stepDuration * 1.35,
-          gain: baseGain * 1.1,
+        gain: baseGain * 1.1,
         type: "triangle",
       });
     });
@@ -64,7 +73,7 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings }
     playTone(audioContext, frequency, now + index * 0.01, {
       attack: settings.audioArt === "pad" ? 0.18 : 0.015,
       duration: settings.audioArt === "pad" ? 2.2 : 1.2,
-        gain: settings.audioArt === "pad" ? baseGain * 0.28 : baseGain * 0.42,
+      gain: settings.audioArt === "pad" ? baseGain * 0.28 : baseGain * 0.42,
       type: settings.audioArt === "pad" ? "sine" : "triangle",
     });
   });
