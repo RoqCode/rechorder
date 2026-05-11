@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import {
   CHORD_TYPES,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/music/chords";
 import { getCenteredRootFloorKey } from "@/lib/music/keyboard";
 import { PianoKeyboard } from "./piano-keyboard";
+import { createProgression, deleteProgression, listProgressions, type SavedProgression } from "./progression-actions";
 
 const MODE_LABELS: Record<MusicMode, string> = {
   major: "Major",
@@ -31,6 +32,11 @@ export function ChordExplorer() {
   const [chordType, setChordType] = useState<ChordType>("triads");
   const [selectedDegree, setSelectedDegree] = useState(1);
   const [progression, setProgression] = useState<DiatonicChord[]>([]);
+  const [library, setLibrary] = useState<SavedProgression[]>([]);
+  const [progressionName, setProgressionName] = useState("");
+  const [progressionNotes, setProgressionNotes] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [isPending, startTransition] = useTransition();
 
   const scale = getScale(tonic, mode);
   const chords = getDiatonicChords({ tonic, mode, chordType });
@@ -39,6 +45,16 @@ export function ChordExplorer() {
     tonic,
     chords.map((chord) => chord.notes),
   );
+
+  useEffect(() => {
+    startTransition(async () => {
+      try {
+        setLibrary(await listProgressions());
+      } catch (error) {
+        setStatusMessage(error instanceof Error ? error.message : "Could not load library");
+      }
+    });
+  }, []);
 
   function selectMode(nextMode: MusicMode) {
     setMode(nextMode);
@@ -66,6 +82,51 @@ export function ChordExplorer() {
       [nextProgression[indexToMove], nextProgression[targetIndex]] = [nextProgression[targetIndex], nextProgression[indexToMove]];
 
       return nextProgression;
+    });
+  }
+
+  function saveProgression() {
+    startTransition(async () => {
+      try {
+        await createProgression({
+          name: progressionName,
+          tonic,
+          mode,
+          chordType,
+          chords: progression,
+          notes: progressionNotes,
+        });
+
+        setProgressionName("");
+        setProgressionNotes("");
+        setLibrary(await listProgressions());
+        setStatusMessage("Saved");
+      } catch (error) {
+        setStatusMessage(error instanceof Error ? error.message : "Could not save progression");
+      }
+    });
+  }
+
+  function loadProgression(savedProgression: SavedProgression) {
+    setTonic(savedProgression.tonic);
+    setMode(savedProgression.mode);
+    setChordType(savedProgression.chordType);
+    setProgression(savedProgression.chords);
+    setProgressionName(savedProgression.name);
+    setProgressionNotes(savedProgression.notes ?? "");
+    setSelectedDegree(savedProgression.chords[0]?.degree ?? 1);
+    setStatusMessage("Loaded");
+  }
+
+  function removeSavedProgression(id: string) {
+    startTransition(async () => {
+      try {
+        await deleteProgression(id);
+        setLibrary(await listProgressions());
+        setStatusMessage("Deleted");
+      } catch (error) {
+        setStatusMessage(error instanceof Error ? error.message : "Could not delete progression");
+      }
     });
   }
 
@@ -228,6 +289,77 @@ export function ChordExplorer() {
               <span>{progression.map((chord) => chord.chordName).join(" - ")}</span>
             </div>
           ) : null}
+          <div className="mt-3 grid gap-2 border-t border-[#fffaf0]/30 pt-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+            <input
+              className="h-9 border-2 border-[#fffaf0] bg-[#171512] px-2 font-mono text-[10px] tracking-[0.08em] text-[#fffaf0] outline-none placeholder:text-[#bfb7aa] focus:bg-[#26231f]"
+              value={progressionName}
+              placeholder="Take name"
+              onChange={(event) => setProgressionName(event.target.value)}
+            />
+            <input
+              className="h-9 border-2 border-[#fffaf0] bg-[#171512] px-2 font-mono text-[10px] tracking-[0.08em] text-[#fffaf0] outline-none placeholder:text-[#bfb7aa] focus:bg-[#26231f]"
+              value={progressionNotes}
+              placeholder="Notes"
+              onChange={(event) => setProgressionNotes(event.target.value)}
+            />
+            <button
+              className="h-9 border-2 border-[#fffaf0] px-3 font-mono text-[10px] uppercase tracking-[0.18em] hover:bg-[#fffaf0] hover:text-[#171512] disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-[#fffaf0]"
+              type="button"
+              disabled={isPending || progression.length === 0 || progressionName.trim().length === 0}
+              onClick={saveProgression}
+            >
+              Save
+            </button>
+          </div>
+          {statusMessage ? <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#bfb7aa]">{statusMessage}</p> : null}
+        </div>
+
+        <div className="border-2 border-[#171512] bg-[#fffaf0] p-3 text-[#171512]">
+          <div className="mb-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.22em]">
+            <span>Library</span>
+            <span>{library.length} takes</span>
+          </div>
+          <div className="grid gap-2">
+            {library.length === 0 ? (
+              <div className="border-2 border-dashed border-[#171512] px-3 py-4 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-[#6f675b]">
+                No saved takes yet
+              </div>
+            ) : (
+              library.map((savedProgression) => (
+                <div className="border-2 border-[#171512] p-2" key={savedProgression.id}>
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div>
+                      <strong className="block text-lg leading-none tracking-[-0.06em]">{savedProgression.name}</strong>
+                      <span className="mt-1 block font-mono text-[9px] uppercase tracking-[0.14em] text-[#6f675b]">
+                        {savedProgression.tonic} {MODE_LABELS[savedProgression.mode]} | {CHORD_TYPE_LABELS[savedProgression.chordType]}
+                      </span>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        className="border-2 border-[#171512] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] hover:bg-[#171512] hover:text-[#fffaf0]"
+                        type="button"
+                        onClick={() => loadProgression(savedProgression)}
+                      >
+                        Load
+                      </button>
+                      <button
+                        className="border-2 border-[#171512] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] hover:bg-[#171512] hover:text-[#fffaf0]"
+                        type="button"
+                        onClick={() => removeSavedProgression(savedProgression.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px] tracking-[0.1em] text-[#6f675b]">
+                    <span>{savedProgression.chords.map((chord) => chord.romanNumeral).join(" - ")}</span>
+                    <span>{savedProgression.chords.map((chord) => chord.chordName).join(" - ")}</span>
+                  </div>
+                  {savedProgression.notes ? <p className="mt-2 text-xs leading-5 text-[#6f675b]">{savedProgression.notes}</p> : null}
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </section>
