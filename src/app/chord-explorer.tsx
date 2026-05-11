@@ -5,6 +5,7 @@ import { useState } from "react";
 import {
   CHORD_TYPES,
   type ChordType,
+  type DiatonicChord,
   getDiatonicChords,
   getScale,
   getSupportedTonics,
@@ -29,6 +30,7 @@ export function ChordExplorer() {
   const [tonic, setTonic] = useState("C");
   const [chordType, setChordType] = useState<ChordType>("triads");
   const [selectedDegree, setSelectedDegree] = useState(1);
+  const [progression, setProgression] = useState<DiatonicChord[]>([]);
 
   const scale = getScale(tonic, mode);
   const chords = getDiatonicChords({ tonic, mode, chordType });
@@ -42,6 +44,29 @@ export function ChordExplorer() {
     setMode(nextMode);
     setTonic(getSupportedTonics(nextMode)[0]);
     setSelectedDegree(1);
+  }
+
+  function addChord(chord: DiatonicChord) {
+    setProgression((currentProgression) => [...currentProgression, chord]);
+  }
+
+  function removeChord(indexToRemove: number) {
+    setProgression((currentProgression) => currentProgression.filter((_, index) => index !== indexToRemove));
+  }
+
+  function moveChord(indexToMove: number, direction: -1 | 1) {
+    setProgression((currentProgression) => {
+      const targetIndex = indexToMove + direction;
+
+      if (targetIndex < 0 || targetIndex >= currentProgression.length) {
+        return currentProgression;
+      }
+
+      const nextProgression = [...currentProgression];
+      [nextProgression[indexToMove], nextProgression[targetIndex]] = [nextProgression[targetIndex], nextProgression[indexToMove]];
+
+      return nextProgression;
+    });
   }
 
   return (
@@ -108,20 +133,32 @@ export function ChordExplorer() {
           </div>
           <div className="flex flex-wrap justify-center gap-2">
             {chords.map((chord) => (
-              <button
-                className={`w-32 shrink-0 border-2 border-[#171512] px-2.5 py-2 text-left transition hover:-translate-y-0.5 hover:bg-white focus:-translate-y-0.5 focus:bg-white focus:outline-none ${
+              <div
+                className={`relative w-32 shrink-0 border-2 border-[#171512] transition hover:-translate-y-0.5 hover:bg-white ${
                   selectedChord.degree === chord.degree ? "bg-white shadow-[3px_3px_0_#171512]" : "bg-[#f2eee6]"
                 }`}
                 key={`${chord.degree}-${chord.romanNumeral}`}
-                type="button"
-                onClick={() => setSelectedDegree(chord.degree)}
               >
-                <span className="font-mono text-[9px] tracking-[0.12em]">{chord.romanNumeral}</span>
-                <span className="mt-1 block text-xl font-semibold leading-none tracking-[-0.06em]">{chord.chordName}</span>
-                <span className="mt-1 block font-mono text-[9px] leading-tight tracking-[0.08em] text-[#6f675b]">
-                  {chord.notes.join(" ")}
-                </span>
-              </button>
+                <button
+                  className="block w-full px-2.5 py-2 pr-9 text-left focus:bg-white focus:outline-none"
+                  type="button"
+                  onClick={() => setSelectedDegree(chord.degree)}
+                >
+                  <span className="font-mono text-[9px] tracking-[0.12em]">{chord.romanNumeral}</span>
+                  <span className="mt-1 block text-xl font-semibold leading-none tracking-[-0.06em]">{chord.chordName}</span>
+                  <span className="mt-1 block font-mono text-[9px] leading-tight tracking-[0.08em] text-[#6f675b]">
+                    {chord.notes.join(" ")}
+                  </span>
+                </button>
+                <button
+                  className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center border-2 border-[#171512] bg-[#fffaf0] font-mono text-[12px] leading-none transition hover:bg-[#f05a28] focus:bg-[#f05a28] focus:outline-none"
+                  type="button"
+                  aria-label={`Add ${chord.chordName} to sequence`}
+                  onClick={() => addChord(chord)}
+                >
+                  +
+                </button>
+              </div>
             ))}
           </div>
         </div>
@@ -129,15 +166,68 @@ export function ChordExplorer() {
         <div className="border-2 border-[#171512] bg-[#171512] p-3 text-[#fffaf0]">
           <div className="mb-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.22em]">
             <span>Sequence Slots</span>
-            <span>Next Slice</span>
+            <button
+              className="text-[#fffaf0] underline decoration-[#f05a28] underline-offset-4 disabled:cursor-not-allowed disabled:opacity-40"
+              type="button"
+              disabled={progression.length === 0}
+              onClick={() => setProgression([])}
+            >
+              Clear
+            </button>
           </div>
-          <div className="grid grid-cols-4 gap-2">
-            {Array.from({ length: 4 }, (_, index) => (
-              <div className="min-h-14 border-2 border-[#fffaf0] p-2" key={index}>
-                <span className="font-mono text-[10px] uppercase tracking-[0.2em]">Slot {index + 1}</span>
+          <div className="flex min-h-14 flex-wrap gap-2">
+            {progression.length === 0 ? (
+              <div className="flex min-h-14 flex-1 items-center justify-center border-2 border-dashed border-[#fffaf0] px-3 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-[#bfb7aa]">
+                Add chords with +
               </div>
-            ))}
+            ) : (
+              progression.map((chord, index) => (
+                <div className="relative min-h-16 min-w-32 border-2 border-[#fffaf0] p-2 pr-7" key={`${chord.degree}-${index}`}>
+                  <button
+                    className="absolute top-1.5 right-1.5 flex h-4 w-4 items-center justify-center border border-[#fffaf0] font-mono text-[10px] leading-none hover:bg-[#fffaf0] hover:text-[#171512]"
+                    type="button"
+                    aria-label={`Remove ${chord.chordName} from sequence`}
+                    onClick={() => removeChord(index)}
+                  >
+                    x
+                  </button>
+                  <span className="block font-mono text-[10px] tracking-[0.2em] text-[#bfb7aa]">
+                    {index + 1} | {chord.romanNumeral}
+                  </span>
+                  <strong className="mt-1 block text-lg leading-none tracking-[-0.06em]">{chord.chordName}</strong>
+                  <span className="mt-1 block font-mono text-[9px] leading-tight tracking-[0.08em] text-[#bfb7aa]">
+                    {chord.notes.join(" ")}
+                  </span>
+                  <div className="mt-2 flex gap-1">
+                    <button
+                      className="flex h-5 w-6 items-center justify-center border border-[#fffaf0] font-mono text-[10px] leading-none hover:bg-[#fffaf0] hover:text-[#171512] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-[#fffaf0]"
+                      type="button"
+                      disabled={index === 0}
+                      aria-label={`Move ${chord.chordName} left`}
+                      onClick={() => moveChord(index, -1)}
+                    >
+                      &lt;
+                    </button>
+                    <button
+                      className="flex h-5 w-6 items-center justify-center border border-[#fffaf0] font-mono text-[10px] leading-none hover:bg-[#fffaf0] hover:text-[#171512] disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:bg-transparent disabled:hover:text-[#fffaf0]"
+                      type="button"
+                      disabled={index === progression.length - 1}
+                      aria-label={`Move ${chord.chordName} right`}
+                      onClick={() => moveChord(index, 1)}
+                    >
+                      &gt;
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
+          {progression.length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[10px] uppercase tracking-[0.16em] text-[#bfb7aa]">
+              <span>{progression.map((chord) => chord.romanNumeral).join(" - ")}</span>
+              <span>{progression.map((chord) => chord.chordName).join(" - ")}</span>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>
