@@ -216,6 +216,8 @@ export function ChordExplorer() {
             <strong className="mt-0.5 block whitespace-nowrap text-sm tracking-[-0.04em]">{scale.join(" ")}</strong>
           </div>
 
+        </div>
+        <div className="mt-2">
           <AudioControls
             isMuted={isMuted}
             volume={volume}
