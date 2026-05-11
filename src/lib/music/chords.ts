@@ -87,6 +87,10 @@ export function getScale(tonic: string, mode: MusicMode): string[] {
   });
 }
 
+export function getPitchClass(note: string) {
+  return getNoteSemitone(note);
+}
+
 function getStackedThirds(scale: string[], rootIndex: number, noteCount: number) {
   return Array.from({ length: noteCount }, (_, index) => scale[(rootIndex + index * 2) % scale.length]);
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getDiatonicChords, getScale } from "./chords";
+import { getDiatonicChords, getPitchClass, getScale } from "./chords";
 
 describe("getScale", () => {
   it("spells C major without accidentals", () => {
@@ -17,6 +17,13 @@ describe("getScale", () => {
 
   it("spells A natural minor without accidentals", () => {
     expect(getScale("A", "natural_minor")).toEqual(["A", "B", "C", "D", "E", "F", "G"]);
+  });
+});
+
+describe("getPitchClass", () => {
+  it("treats enharmonic notes as the same pitch class", () => {
+    expect(getPitchClass("Cb")).toBe(getPitchClass("B"));
+    expect(getPitchClass("F#")).toBe(getPitchClass("Gb"));
   });
 });
 

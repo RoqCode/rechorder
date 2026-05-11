@@ -11,6 +11,8 @@ import {
   MUSIC_MODES,
   type MusicMode,
 } from "@/lib/music/chords";
+import { getCenteredRootFloorKey } from "@/lib/music/keyboard";
+import { PianoKeyboard } from "./piano-keyboard";
 
 const MODE_LABELS: Record<MusicMode, string> = {
   major: "Major",
@@ -26,13 +28,20 @@ export function ChordExplorer() {
   const [mode, setMode] = useState<MusicMode>("major");
   const [tonic, setTonic] = useState("C");
   const [chordType, setChordType] = useState<ChordType>("triads");
+  const [selectedDegree, setSelectedDegree] = useState(1);
 
   const scale = getScale(tonic, mode);
   const chords = getDiatonicChords({ tonic, mode, chordType });
+  const selectedChord = chords.find((chord) => chord.degree === selectedDegree) ?? chords[0];
+  const rootFloorKey = getCenteredRootFloorKey(
+    tonic,
+    chords.map((chord) => chord.notes),
+  );
 
   function selectMode(nextMode: MusicMode) {
     setMode(nextMode);
     setTonic(getSupportedTonics(nextMode)[0]);
+    setSelectedDegree(1);
   }
 
   return (
@@ -78,6 +87,19 @@ export function ChordExplorer() {
 
       <div className="grid min-h-0 content-between gap-4 p-3 sm:p-4">
         <div>
+          <div className="mb-4 border-2 border-[#171512] bg-[#fffaf0] p-3">
+            <div className="mb-2 flex items-end justify-between gap-3">
+              <div>
+                <span className="block font-mono text-[9px] uppercase tracking-[0.14em] text-[#6f675b]">Selected Chord</span>
+                <strong className="mt-0.5 block text-2xl leading-none tracking-[-0.06em]">{selectedChord.chordName}</strong>
+              </div>
+              <span className="font-mono text-[10px] tracking-[0.12em] text-[#6f675b]">
+                {selectedChord.romanNumeral} / {selectedChord.notes.join(" ")}
+              </span>
+            </div>
+            <PianoKeyboard activeNotes={selectedChord.notes} rootFloorKey={rootFloorKey} />
+          </div>
+
           <div className="mb-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.22em]">
             <span>Available Chords</span>
             <span>
@@ -87,8 +109,12 @@ export function ChordExplorer() {
           <div className="flex flex-wrap justify-center gap-2">
             {chords.map((chord) => (
               <button
-                className="w-32 shrink-0 border-2 border-[#171512] bg-[#f2eee6] px-2.5 py-2 text-left transition hover:-translate-y-0.5 hover:bg-white focus:-translate-y-0.5 focus:bg-white focus:outline-none"
+                className={`w-32 shrink-0 border-2 border-[#171512] px-2.5 py-2 text-left transition hover:-translate-y-0.5 hover:bg-white focus:-translate-y-0.5 focus:bg-white focus:outline-none ${
+                  selectedChord.degree === chord.degree ? "bg-white shadow-[3px_3px_0_#171512]" : "bg-[#f2eee6]"
+                }`}
                 key={`${chord.degree}-${chord.romanNumeral}`}
+                type="button"
+                onClick={() => setSelectedDegree(chord.degree)}
               >
                 <span className="font-mono text-[9px] tracking-[0.12em]">{chord.romanNumeral}</span>
                 <span className="mt-1 block text-xl font-semibold leading-none tracking-[-0.06em]">{chord.chordName}</span>
