@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import {
   CHORD_TYPES,
@@ -12,8 +12,12 @@ import {
   MUSIC_MODES,
   type MusicMode,
 } from "@/lib/music/chords";
+import { type AudioArt, playChordPreview } from "@/lib/audio/chord-audio";
 import { getCenteredRootFloorKey } from "@/lib/music/keyboard";
+import { AudioControls } from "./audio-controls";
+import { ControlGroup, SegmentedControl } from "./form-controls";
 import { PianoKeyboard } from "./piano-keyboard";
+import { ProgressionLibrary } from "./progression-library";
 import { createProgression, deleteProgression, listProgressions, type SavedProgression, updateProgression } from "./progression-actions";
 
 const MODE_LABELS: Record<MusicMode, string> = {
@@ -37,8 +41,13 @@ export function ChordExplorer() {
   const [progressionNotes, setProgressionNotes] = useState("");
   const [loadedProgressionId, setLoadedProgressionId] = useState<string | null>(null);
   const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(null);
+  const [isMuted, setIsMuted] = useState(true);
+  const [volume, setVolume] = useState(85);
+  const [tempo, setTempo] = useState(100);
+  const [audioArt, setAudioArt] = useState<AudioArt>("piano");
   const [statusMessage, setStatusMessage] = useState("");
   const [isPending, startTransition] = useTransition();
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const scale = getScale(tonic, mode);
   const chords = getDiatonicChords({ tonic, mode, chordType });
@@ -62,6 +71,26 @@ export function ChordExplorer() {
     setMode(nextMode);
     setTonic(getSupportedTonics(nextMode)[0]);
     setSelectedDegree(1);
+  }
+
+  function selectChord(chord: DiatonicChord) {
+    setSelectedDegree(chord.degree);
+    playChord(chord);
+  }
+
+  function playChord(chord: DiatonicChord) {
+    playChordPreview({
+      audioContext: getAudioContext(),
+      chord,
+      rootFloorKey,
+      settings: { isMuted, volume, tempo, audioArt },
+    });
+  }
+
+  function getAudioContext() {
+    audioContextRef.current ??= new AudioContext();
+
+    return audioContextRef.current;
   }
 
   function addChord(chord: DiatonicChord) {
@@ -186,6 +215,17 @@ export function ChordExplorer() {
             <span className="block font-mono text-[9px] uppercase tracking-[0.14em] text-[#6f675b]">Scale</span>
             <strong className="mt-0.5 block whitespace-nowrap text-sm tracking-[-0.04em]">{scale.join(" ")}</strong>
           </div>
+
+          <AudioControls
+            isMuted={isMuted}
+            volume={volume}
+            tempo={tempo}
+            audioArt={audioArt}
+            onMutedChange={setIsMuted}
+            onVolumeChange={setVolume}
+            onTempoChange={setTempo}
+            onAudioArtChange={setAudioArt}
+          />
         </div>
       </div>
 
@@ -196,10 +236,10 @@ export function ChordExplorer() {
               <div>
                 <span className="block font-mono text-[9px] uppercase tracking-[0.14em] text-[#6f675b]">Selected Chord</span>
                 <strong className="mt-0.5 block text-2xl leading-none tracking-[-0.06em]">{selectedChord.chordName}</strong>
+                <span className="mt-1 block font-mono text-[10px] tracking-[0.12em] text-[#6f675b]">
+                  {selectedChord.romanNumeral} / {selectedChord.notes.join(" ")}
+                </span>
               </div>
-              <span className="font-mono text-[10px] tracking-[0.12em] text-[#6f675b]">
-                {selectedChord.romanNumeral} / {selectedChord.notes.join(" ")}
-              </span>
             </div>
             <PianoKeyboard activeNotes={selectedChord.notes} rootFloorKey={rootFloorKey} />
           </div>
@@ -221,7 +261,7 @@ export function ChordExplorer() {
                 <button
                   className="block w-full px-2.5 py-2 pr-9 text-left focus:bg-white focus:outline-none"
                   type="button"
-                  onClick={() => setSelectedDegree(chord.degree)}
+                  onClick={() => selectChord(chord)}
                 >
                   <span className="font-mono text-[9px] tracking-[0.12em]">{chord.romanNumeral}</span>
                   <span className="mt-1 block text-xl font-semibold leading-none tracking-[-0.06em]">{chord.chordName}</span>
@@ -337,124 +377,16 @@ export function ChordExplorer() {
           {statusMessage ? <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.18em] text-[#bfb7aa]">{statusMessage}</p> : null}
         </div>
 
-        <div className="border-2 border-[#171512] bg-[#fffaf0] p-3 text-[#171512]">
-          <div className="mb-3 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.22em]">
-            <span>Library</span>
-            <span>{library.length} takes</span>
-          </div>
-          <div className="grid gap-2">
-            {library.length === 0 ? (
-              <div className="border-2 border-dashed border-[#171512] px-3 py-4 text-center font-mono text-[10px] uppercase tracking-[0.2em] text-[#6f675b]">
-                No saved takes yet
-              </div>
-            ) : (
-              library.map((savedProgression) => {
-                const isConfirmingDelete = deleteConfirmationId === savedProgression.id;
-
-                return (
-                <div className="relative border-2 border-[#171512] p-2" key={savedProgression.id}>
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div>
-                      <strong className="block text-lg leading-none tracking-[-0.06em]">{savedProgression.name}</strong>
-                      <span className="mt-1 block font-mono text-[9px] uppercase tracking-[0.14em] text-[#6f675b]">
-                        {savedProgression.tonic} {MODE_LABELS[savedProgression.mode]} | {CHORD_TYPE_LABELS[savedProgression.chordType]}
-                      </span>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        className="border-2 border-[#171512] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] hover:bg-[#171512] hover:text-[#fffaf0]"
-                        type="button"
-                        onClick={() => loadProgression(savedProgression)}
-                      >
-                        Load
-                      </button>
-                      <button
-                        className="border-2 border-[#171512] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] hover:bg-[#171512] hover:text-[#fffaf0]"
-                        type="button"
-                        aria-expanded={isConfirmingDelete}
-                        onClick={() => setDeleteConfirmationId(savedProgression.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                  {isConfirmingDelete ? (
-                    <div className="absolute top-10 right-2 z-10 w-52 border-2 border-[#171512] bg-[#fffaf0] p-2 shadow-[3px_3px_0_#171512]">
-                      <p className="font-mono text-[9px] uppercase leading-4 tracking-[0.14em] text-[#6f675b]">Delete this take permanently?</p>
-                      <div className="mt-2 grid grid-cols-2 gap-1">
-                        <button
-                          className="border-2 border-[#171512] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] hover:bg-white"
-                          type="button"
-                          onClick={() => setDeleteConfirmationId(null)}
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          className="border-2 border-[#171512] bg-[#171512] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-[#fffaf0] hover:bg-[#f05a28] hover:text-[#171512] disabled:cursor-not-allowed disabled:opacity-40"
-                          type="button"
-                          disabled={isPending}
-                          onClick={() => removeSavedProgression(savedProgression.id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px] tracking-[0.1em] text-[#6f675b]">
-                    <span>{savedProgression.chords.map((chord) => chord.romanNumeral).join(" - ")}</span>
-                    <span>{savedProgression.chords.map((chord) => chord.chordName).join(" - ")}</span>
-                  </div>
-                  {savedProgression.notes ? <p className="mt-2 text-xs leading-5 text-[#6f675b]">{savedProgression.notes}</p> : null}
-                </div>
-                );
-              })
-            )}
-          </div>
-        </div>
+        <ProgressionLibrary
+          library={library}
+          deleteConfirmationId={deleteConfirmationId}
+          isPending={isPending}
+          onLoad={loadProgression}
+          onRequestDelete={setDeleteConfirmationId}
+          onCancelDelete={() => setDeleteConfirmationId(null)}
+          onDelete={removeSavedProgression}
+        />
       </div>
     </section>
-  );
-}
-
-type ControlGroupProps = {
-  label: string;
-  children: React.ReactNode;
-};
-
-function ControlGroup({ label, children }: ControlGroupProps) {
-  return (
-    <label className="grid gap-1">
-      <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-[#6f675b]">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-type SegmentedControlProps<T extends string> = {
-  options: { value: T; label: string }[];
-  value: T;
-  onChange: (value: T) => void;
-};
-
-function SegmentedControl<T extends string>({ options, value, onChange }: SegmentedControlProps<T>) {
-  return (
-    <div className="box-border inline-flex h-9 border-2 border-[#171512]">
-      {options.map((option) => {
-        const isSelected = option.value === value;
-
-        return (
-          <button
-            className={`h-full whitespace-nowrap px-2.5 font-mono text-[9px] uppercase leading-none tracking-normal transition ${
-              isSelected ? "bg-[#171512] text-[#fffaf0]" : "bg-[#fffaf0] hover:bg-white"
-            }`}
-            key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
   );
 }
