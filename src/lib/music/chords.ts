@@ -1,5 +1,8 @@
-export type MusicMode = "major" | "natural_minor";
-export type ChordType = "triads" | "sevenths";
+export const MUSIC_MODES = ["major", "natural_minor"] as const;
+export const CHORD_TYPES = ["triads", "sevenths"] as const;
+
+export type MusicMode = (typeof MUSIC_MODES)[number];
+export type ChordType = (typeof CHORD_TYPES)[number];
 
 export type DiatonicChord = {
   degree: number;
@@ -34,9 +37,6 @@ const SUPPORTED_TONICS: Record<MusicMode, string[]> = {
   major: ["C", "G", "D", "A", "E", "B", "F#", "C#", "F", "Bb", "Eb", "Ab", "Db", "Gb", "Cb"],
   natural_minor: ["A", "E", "B", "F#", "C#", "G#", "D#", "A#", "D", "G", "C", "F", "Bb", "Eb", "Ab"],
 };
-
-export const MUSIC_MODES: MusicMode[] = ["major", "natural_minor"];
-export const CHORD_TYPES: ChordType[] = ["triads", "sevenths"];
 
 export function getSupportedTonics(mode: MusicMode) {
   return SUPPORTED_TONICS[mode];

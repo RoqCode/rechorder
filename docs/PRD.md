@@ -91,11 +91,13 @@ Each chord card displays:
 
 ### Piano Visualization
 
-The piano visualization uses a fixed keyboard range from `C3` through `C5`, plus the final `C` key at the end if represented as a 25-key layout.
+The piano visualization uses a stable keyboard range for the selected key instead of starting each chord view at the chord root.
 
-This is intentionally fixed instead of starting each chord view at the chord root. A fixed range makes chord shapes easier to compare because the keyboard does not shift between chords.
+The app may choose a centered octave placement per selected key and chord type so all diatonic chords fit comfortably inside the visible keyboard. Once selected, that placement remains stable while browsing chords in the same key and chord type.
 
-Chord tones are highlighted on the keyboard. In the MVP, one octave placement is enough per chord tone, but the keyboard itself spans two octaves so chords near octave boundaries remain visually stable.
+This makes chord shapes easier to compare because the keyboard does not shift between individual chords, while still keeping edge-case keys and seventh chords readable.
+
+Chord tones are highlighted on the keyboard. In the MVP, one octave placement is enough per chord tone, but the keyboard itself should span enough range for chords near octave boundaries to remain visually stable.
 
 ### Progression Builder
 

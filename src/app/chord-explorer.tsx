@@ -36,6 +36,7 @@ export function ChordExplorer() {
   const [progressionName, setProgressionName] = useState("");
   const [progressionNotes, setProgressionNotes] = useState("");
   const [loadedProgressionId, setLoadedProgressionId] = useState<string | null>(null);
+  const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("");
   const [isPending, startTransition] = useTransition();
 
@@ -139,6 +140,7 @@ export function ChordExplorer() {
         if (loadedProgressionId === id) {
           setLoadedProgressionId(null);
         }
+        setDeleteConfirmationId(null);
         setStatusMessage("Deleted");
       } catch (error) {
         setStatusMessage(error instanceof Error ? error.message : "Could not delete progression");
@@ -346,8 +348,11 @@ export function ChordExplorer() {
                 No saved takes yet
               </div>
             ) : (
-              library.map((savedProgression) => (
-                <div className="border-2 border-[#171512] p-2" key={savedProgression.id}>
+              library.map((savedProgression) => {
+                const isConfirmingDelete = deleteConfirmationId === savedProgression.id;
+
+                return (
+                <div className="relative border-2 border-[#171512] p-2" key={savedProgression.id}>
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <strong className="block text-lg leading-none tracking-[-0.06em]">{savedProgression.name}</strong>
@@ -366,19 +371,43 @@ export function ChordExplorer() {
                       <button
                         className="border-2 border-[#171512] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] hover:bg-[#171512] hover:text-[#fffaf0]"
                         type="button"
-                        onClick={() => removeSavedProgression(savedProgression.id)}
+                        aria-expanded={isConfirmingDelete}
+                        onClick={() => setDeleteConfirmationId(savedProgression.id)}
                       >
                         Delete
                       </button>
                     </div>
                   </div>
+                  {isConfirmingDelete ? (
+                    <div className="absolute top-10 right-2 z-10 w-52 border-2 border-[#171512] bg-[#fffaf0] p-2 shadow-[3px_3px_0_#171512]">
+                      <p className="font-mono text-[9px] uppercase leading-4 tracking-[0.14em] text-[#6f675b]">Delete this take permanently?</p>
+                      <div className="mt-2 grid grid-cols-2 gap-1">
+                        <button
+                          className="border-2 border-[#171512] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] hover:bg-white"
+                          type="button"
+                          onClick={() => setDeleteConfirmationId(null)}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className="border-2 border-[#171512] bg-[#171512] px-2 py-1 font-mono text-[9px] uppercase tracking-[0.14em] text-[#fffaf0] hover:bg-[#f05a28] hover:text-[#171512] disabled:cursor-not-allowed disabled:opacity-40"
+                          type="button"
+                          disabled={isPending}
+                          onClick={() => removeSavedProgression(savedProgression.id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 font-mono text-[9px] tracking-[0.1em] text-[#6f675b]">
                     <span>{savedProgression.chords.map((chord) => chord.romanNumeral).join(" - ")}</span>
                     <span>{savedProgression.chords.map((chord) => chord.chordName).join(" - ")}</span>
                   </div>
                   {savedProgression.notes ? <p className="mt-2 text-xs leading-5 text-[#6f675b]">{savedProgression.notes}</p> : null}
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
