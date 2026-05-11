@@ -35,6 +35,13 @@ const SUPPORTED_TONICS: Record<MusicMode, string[]> = {
   natural_minor: ["A", "E", "B", "F#", "C#", "G#", "D#", "A#", "D", "G", "C", "F", "Bb", "Eb", "Ab"],
 };
 
+export const MUSIC_MODES: MusicMode[] = ["major", "natural_minor"];
+export const CHORD_TYPES: ChordType[] = ["triads", "sevenths"];
+
+export function getSupportedTonics(mode: MusicMode) {
+  return SUPPORTED_TONICS[mode];
+}
+
 const ROMAN_NUMERALS: Record<MusicMode, Record<ChordType, string[]>> = {
   major: {
     triads: ["I", "ii", "iii", "IV", "V", "vi", "vii°"],
