@@ -1,9 +1,9 @@
 "use client";
 
-import { getPitchClass } from "@/lib/music/chords";
+import { type ChordInversion, getPitchClass } from "@/lib/music/chords";
 import {
   BLACK_KEYS,
-  getKeyRelativeRootPositionKeyIds,
+  getKeyRelativeVoicingKeyIds,
   getVisibleChordToneKeyIds,
   stripOctave,
   WHITE_KEYS,
@@ -16,6 +16,7 @@ type PianoKeyboardProps = {
   rootFloorKey: string;
   /** First note of the active chord — rendered with the "R" marker. */
   rootNote?: string;
+  inversion?: ChordInversion;
 };
 
 export function PianoKeyboard({
@@ -24,11 +25,12 @@ export function PianoKeyboard({
   activeNoteMode = "root-position",
   rootFloorKey,
   rootNote,
+  inversion = 0,
 }: PianoKeyboardProps) {
   const activeKeyIds =
     activeNoteMode === "visible"
       ? getVisibleChordToneKeyIds(activeNotes)
-      : getKeyRelativeRootPositionKeyIds(activeNotes, rootFloorKey);
+      : getKeyRelativeVoicingKeyIds(activeNotes, rootFloorKey, inversion);
   const alternateKeyIds = getVisibleChordToneKeyIds(alternateNotes);
   // Compare by pitch class, not by spelling — E# and F share a piano key, but
   // the chord's stored root note keeps its enharmonic spelling (E#).

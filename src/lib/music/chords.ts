@@ -8,15 +8,18 @@ export const MUSIC_MODES = [
   "locrian",
 ] as const;
 export const CHORD_TYPES = ["triads", "sevenths"] as const;
+export const CHORD_INVERSIONS = [0, 1, 2, 3] as const;
 
 export type MusicMode = (typeof MUSIC_MODES)[number];
 export type ChordType = (typeof CHORD_TYPES)[number];
+export type ChordInversion = (typeof CHORD_INVERSIONS)[number];
 
 export type DiatonicChord = {
   degree: number;
   romanNumeral: string;
   chordName: string;
   notes: string[];
+  inversion?: ChordInversion;
 };
 
 export type GetDiatonicChordsInput = {

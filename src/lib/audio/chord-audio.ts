@@ -1,5 +1,5 @@
 import type { DiatonicChord } from "@/lib/music/chords";
-import { getKeyRelativeRootPositionKeyIds } from "@/lib/music/keyboard";
+import { getKeyRelativeVoicingKeyIds } from "@/lib/music/keyboard";
 
 export const AUDIO_ARTS = ["piano", "pad", "arp", "strings"] as const;
 export type AudioArt = (typeof AUDIO_ARTS)[number];
@@ -62,7 +62,7 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
   }
 
   const now = startTime ?? audioContext.currentTime;
-  const chordKeyIds = [...getKeyRelativeRootPositionKeyIds(chord.notes, rootFloorKey)];
+  const chordKeyIds = [...getKeyRelativeVoicingKeyIds(chord.notes, rootFloorKey, chord.inversion ?? 0)];
   const frequencies = chordKeyIds.map(getKeyFrequency);
   const baseGain = settings.volume / 100;
   const oscillators: OscillatorNode[] = [];

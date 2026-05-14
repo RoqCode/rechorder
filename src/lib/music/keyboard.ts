@@ -1,4 +1,4 @@
-import { getPitchClass } from "./chords";
+import { type ChordInversion, getPitchClass } from "./chords";
 
 export const WHITE_KEYS = [
   "C2",
@@ -50,7 +50,17 @@ const KEYBOARD_KEYS = [...WHITE_KEYS, ...BLACK_KEYS.map((key) => key.note)].sort
 const KEYBOARD_CENTER = (getKeyPosition(KEYBOARD_KEYS[0]) + getKeyPosition(KEYBOARD_KEYS[KEYBOARD_KEYS.length - 1])) / 2;
 
 export function getKeyRelativeRootPositionKeyIds(activeNotes: string[], rootFloorKey: string) {
-  return new Set(getRootPositionCandidate(activeNotes, rootFloorKey) ?? []);
+  return getKeyRelativeVoicingKeyIds(activeNotes, rootFloorKey, 0);
+}
+
+export function getKeyRelativeVoicingKeyIds(activeNotes: string[], rootFloorKey: string, inversion: ChordInversion = 0) {
+  return new Set(getRootPositionCandidate(getVoicedNotes(activeNotes, inversion), rootFloorKey) ?? []);
+}
+
+export function getVoicedNotes(activeNotes: string[], inversion: ChordInversion = 0) {
+  const safeInversion = Math.min(inversion, Math.max(activeNotes.length - 1, 0));
+
+  return [...activeNotes.slice(safeInversion), ...activeNotes.slice(0, safeInversion)];
 }
 
 export function getVisibleChordToneKeyIds(activeNotes: string[]) {

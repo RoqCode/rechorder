@@ -3,7 +3,10 @@ import { describe, expect, it } from "vitest";
 import { getDiatonicChords } from "../lib/music/chords";
 import { validateProgressionInput } from "./progression-validation";
 
-const validChords = getDiatonicChords({ tonic: "C", mode: "ionian", chordType: "triads" });
+const validChords = getDiatonicChords({ tonic: "C", mode: "ionian", chordType: "triads" }).map((chord) => ({
+  ...chord,
+  inversion: 0 as const,
+}));
 
 describe("validateProgressionInput", () => {
   it("accepts chords from the selected key", () => {
@@ -34,8 +37,19 @@ describe("validateProgressionInput", () => {
       tonic: "C",
       mode: "ionian",
       chordType: "triads",
-      chords: [{ degree: 1, romanNumeral: "I", chordName: "D", notes: ["D", "F#", "A"] }],
+      chords: [{ degree: 1, romanNumeral: "I", chordName: "D", notes: ["D", "F#", "A"], inversion: 0 }],
       notes: "",
     })).toThrow("Progression contains chords outside the selected key");
+  });
+
+  it("rejects inversions outside the chord range", () => {
+    expect(() => validateProgressionInput({
+      name: "Test",
+      tonic: "C",
+      mode: "ionian",
+      chordType: "triads",
+      chords: [{ ...validChords[0], inversion: 3 }],
+      notes: "",
+    })).toThrow("Progression contains an inversion outside the chord range");
   });
 });

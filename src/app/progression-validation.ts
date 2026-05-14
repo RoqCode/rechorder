@@ -3,11 +3,14 @@ import { z } from "zod";
 import { type ProgressionChord } from "../db/schema";
 import { CHORD_TYPES, getDiatonicChords, getSupportedTonics, MUSIC_MODES } from "../lib/music/chords";
 
+const chordInversionSchema = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]);
+
 const progressionChordInputSchema = z.object({
   degree: z.number().int().min(1).max(7),
   romanNumeral: z.string().min(1).max(16),
   chordName: z.string().min(1).max(32),
   notes: z.array(z.string().min(1).max(4)).min(3).max(4),
+  inversion: chordInversionSchema.optional().default(0),
 });
 
 export const progressionInputSchema = z.object({
@@ -25,10 +28,11 @@ export const updateProgressionInputSchema = progressionInputSchema.extend({
 
 export const progressionIdSchema = z.string().uuid();
 
-export type ProgressionInput = z.infer<typeof progressionInputSchema>;
-export type UpdateProgressionInput = z.infer<typeof updateProgressionInputSchema>;
+export type ProgressionInput = z.input<typeof progressionInputSchema>;
+export type UpdateProgressionInput = z.input<typeof updateProgressionInputSchema>;
+type ValidatedProgressionInput = z.output<typeof progressionInputSchema>;
 
-export function validateProgressionInput<T extends ProgressionInput>(input: T) {
+export function validateProgressionInput<T extends ValidatedProgressionInput>(input: T) {
   if (!getSupportedTonics(input.mode).includes(input.tonic)) {
     throw new Error(`${input.tonic} ${input.mode} is not supported`);
   }
@@ -40,6 +44,12 @@ export function validateProgressionInput<T extends ProgressionInput>(input: T) {
 
   if (hasInvalidChord) {
     throw new Error("Progression contains chords outside the selected key");
+  }
+
+  const hasInvalidInversion = input.chords.some((chord) => (chord.inversion ?? 0) >= chord.notes.length);
+
+  if (hasInvalidInversion) {
+    throw new Error("Progression contains an inversion outside the chord range");
   }
 
   return input;

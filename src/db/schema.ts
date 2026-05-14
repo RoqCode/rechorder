@@ -16,6 +16,7 @@ export type ProgressionChord = {
   romanNumeral: string;
   chordName: string;
   notes: string[];
+  inversion?: 0 | 1 | 2 | 3;
 };
 
 export const progressions = pgTable("progressions", {

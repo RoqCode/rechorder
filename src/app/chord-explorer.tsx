@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   type ChordType,
+  type ChordInversion,
   type DiatonicChord,
   formatNote,
   getDiatonicChords,
@@ -14,7 +15,8 @@ import {
   type MusicMode,
 } from "@/lib/music/chords";
 import { type AudioArt } from "@/lib/audio/chord-audio";
-import { getCenteredRootFloorKey } from "@/lib/music/keyboard";
+import { getCenteredRootFloorKey, getVoicedNotes } from "@/lib/music/keyboard";
+import { applyProgressionTemplate, type ProgressionTemplate } from "@/lib/music/progression-templates";
 
 import { AudioControls } from "./audio-controls";
 import { ChordGrid } from "./chord-grid";
@@ -22,6 +24,7 @@ import { LibrarySidebar } from "./library-sidebar";
 import { PianoKeyboard } from "./piano-keyboard";
 import { type SavedProgression } from "./progression-actions";
 import { ProgressionSequence } from "./progression-sequence";
+import { ProgressionTemplates } from "./progression-templates";
 import { Selectors } from "./selectors";
 import { useProgressionLibrary } from "./use-progression-library";
 import { useProgressionPlayback } from "./use-progression-playback";
@@ -33,6 +36,8 @@ export function ChordExplorer() {
   const [tonic, setTonic] = useState("C");
   const [chordType, setChordType] = useState<ChordType>("triads");
   const [selectedDegree, setSelectedDegree] = useState<number | null>(null);
+  const [focusedChord, setFocusedChord] = useState<DiatonicChord | null>(null);
+  const [activeProgressionIndex, setActiveProgressionIndex] = useState<number | null>(null);
   const [keyboardDisplayMode, setKeyboardDisplayMode] = useState<KeyboardDisplayMode>("scale");
   const [progression, setProgression] = useState<DiatonicChord[]>([]);
   const [progressionName, setProgressionName] = useState("");
@@ -62,10 +67,11 @@ export function ChordExplorer() {
     [tonic, mode, chordType],
   );
   const scale = useMemo(() => getScale(tonic, mode), [tonic, mode]);
-  const selectedChord =
+  const selectedChord = focusedChord ?? (
     selectedDegree !== null
       ? (chords.find((c) => c.degree === selectedDegree) ?? null)
-      : null;
+      : null
+  );
   const rootFloorKey = useMemo(
     () => getCenteredRootFloorKey(tonic, chords.map((chord) => chord.notes)),
     [tonic, chords],
@@ -111,6 +117,8 @@ export function ChordExplorer() {
         removeChordRef.current(progression.length - 1);
       } else if (event.key === "Escape") {
         setSelectedDegree(null);
+        setFocusedChord(null);
+        setActiveProgressionIndex(null);
       }
     }
 
@@ -123,6 +131,8 @@ export function ChordExplorer() {
     setTonic(nextTonic);
     setKeyboardDisplayMode("scale");
     setSelectedDegree(null);
+    setFocusedChord(null);
+    setActiveProgressionIndex(null);
   }
 
   function handleModeChange(nextMode: MusicMode) {
@@ -130,6 +140,8 @@ export function ChordExplorer() {
     setMode(nextMode);
     setKeyboardDisplayMode("scale");
     setSelectedDegree(null);
+    setFocusedChord(null);
+    setActiveProgressionIndex(null);
     // Try to keep the same pitch class for the tonic when switching modes.
     const supported = getSupportedTonics(nextMode);
     const targetPc = getPitchClass(tonic);
@@ -144,6 +156,8 @@ export function ChordExplorer() {
   function handleChordTypeChange(nextChordType: ChordType) {
     stopPlayback();
     setChordType(nextChordType);
+    setFocusedChord(null);
+    setActiveProgressionIndex(null);
   }
 
   function handleMutedChange(nextIsMuted: boolean) {
@@ -167,34 +181,48 @@ export function ChordExplorer() {
   }
 
   function previewChord(chord: DiatonicChord) {
+    setActiveProgressionIndex(null);
     focusChord(chord);
     playChord(chord);
   }
 
   function appendChord(chord: DiatonicChord) {
-    focusChord(chord);
-    addChord(chord);
-    playChord(chord);
+    const nextChord = { ...chord, inversion: chord.inversion ?? 0 };
+    stopPlayback();
+    setProgression((current) => {
+      setActiveProgressionIndex(current.length);
+      return [...current, nextChord];
+    });
+    focusChord(nextChord);
+    playChord(nextChord);
   }
 
   function focusChord(chord: DiatonicChord) {
     setKeyboardDisplayMode("chord");
     setSelectedDegree(chord.degree);
-  }
-
-  function addChord(chord: DiatonicChord) {
-    stopPlayback();
-    setProgression((current) => [...current, chord]);
+    setFocusedChord(chord);
   }
 
   function clearProgression() {
     stopPlayback();
     setProgression([]);
+    setFocusedChord(null);
+    setActiveProgressionIndex(null);
   }
 
   function removeChord(index: number) {
     stopPlayback();
+    const isRemovingActiveChord = activeProgressionIndex === index;
     setProgression((current) => current.filter((_, i) => i !== index));
+    setActiveProgressionIndex((current) => {
+      if (current === null) return null;
+      if (current === index) return null;
+      return current > index ? current - 1 : current;
+    });
+    if (isRemovingActiveChord) {
+      setSelectedDegree(null);
+      setFocusedChord(null);
+    }
   }
 
   function reorderChord(fromIndex: number, toIndex: number) {
@@ -205,6 +233,46 @@ export function ChordExplorer() {
       next.splice(toIndex, 0, moved);
       return next;
     });
+    setActiveProgressionIndex((current) => {
+      if (current === null) return null;
+      if (current === fromIndex) return toIndex;
+      if (fromIndex < current && current <= toIndex) return current - 1;
+      if (toIndex <= current && current < fromIndex) return current + 1;
+      return current;
+    });
+  }
+
+  function replaceWithTemplate(template: ProgressionTemplate) {
+    stopPlayback();
+    const nextProgression = applyProgressionTemplate(template, chords);
+    setProgression(nextProgression);
+    setActiveProgressionIndex(0);
+    focusChord(nextProgression[0]);
+    setLoadedProgressionId(null);
+    setStatusMessage(`Loaded ${template.name}`);
+  }
+
+  function focusProgressionChord(index: number) {
+    const chord = progression[index];
+    if (!chord) return;
+
+    setActiveProgressionIndex(index);
+    focusChord(chord);
+    playChord(chord);
+  }
+
+  function changeChordInversion(index: number, inversion: ChordInversion) {
+    stopPlayback();
+    const chord = progression[index];
+    const updatedChord = chord ? { ...chord, inversion } : null;
+    setProgression((current) => current.map((chord, i) => (
+      i === index ? { ...chord, inversion } : chord
+    )));
+    if (updatedChord) {
+      setActiveProgressionIndex(index);
+      focusChord(updatedChord);
+      playChord(updatedChord);
+    }
   }
 
   function saveProgression() {
@@ -226,6 +294,7 @@ export function ChordExplorer() {
     setProgressionName("");
     setProgressionNotes("");
     setLoadedProgressionId(null);
+    setActiveProgressionIndex(null);
     setStatusMessage("New take");
   }
 
@@ -239,6 +308,8 @@ export function ChordExplorer() {
     setProgressionNotes(saved.notes ?? "");
     setLoadedProgressionId(saved.id);
     setSelectedDegree(saved.chords[0]?.degree ?? null);
+    setFocusedChord(saved.chords[0] ?? null);
+    setActiveProgressionIndex(saved.chords.length > 0 ? 0 : null);
     setKeyboardDisplayMode(saved.chords.length > 0 ? "chord" : "scale");
     setStatusMessage("Loaded");
   }
@@ -267,7 +338,7 @@ export function ChordExplorer() {
   }
 
   const keyboardReadout = keyboardDisplayMode === "chord" && selectedChord
-    ? `${selectedChord.chordName.replace("dim", "°")} · ${selectedChord.notes.map(formatNote).join(" ")}`
+    ? `${selectedChord.chordName.replace("dim", "°")} · ${getVoicedNotes(selectedChord.notes, selectedChord.inversion ?? 0).map(formatNote).join(" ")}`
     : `${keyLabel} · ${scale.map(formatNote).join(" ")}`;
   const keyboardNotes = keyboardDisplayMode === "chord" ? (selectedChord?.notes ?? []) : scale;
 
@@ -316,11 +387,13 @@ export function ChordExplorer() {
             onChangeChordType={handleChordTypeChange}
           />
 
+          <ProgressionTemplates onApplyTemplate={replaceWithTemplate} />
+
           {/* ZONE 3 */}
           <section className="border-b border-[var(--rule)] py-9">
             <header className="mb-6 flex items-baseline gap-[10px]">
               <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-2)]">
-                03
+                04
               </span>
               <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
                 Keyboard
@@ -334,12 +407,14 @@ export function ChordExplorer() {
               alternateNotes={keyboardNotes}
               rootFloorKey={rootFloorKey}
               rootNote={keyboardDisplayMode === "chord" ? selectedChord?.notes[0] : tonic}
+              inversion={keyboardDisplayMode === "chord" ? (selectedChord?.inversion ?? 0) : 0}
             />
           </section>
 
           {/* ZONE 4 */}
           <ProgressionSequence
             progression={progression}
+            activeIndex={activeProgressionIndex}
             playingIndex={playingIndex}
             keyLabel={keyLabel}
             isPlaying={isPlaying}
@@ -347,6 +422,8 @@ export function ChordExplorer() {
             copyMessage={copyMessage}
             onRemove={removeChord}
             onReorder={reorderChord}
+            onFocusChord={focusProgressionChord}
+            onChangeInversion={changeChordInversion}
             onTogglePlayback={togglePlayback}
             onToggleLoop={() => setIsLooping((current) => !current)}
             onClear={clearProgression}

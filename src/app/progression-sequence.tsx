@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 
-import { formatNote, type DiatonicChord } from "@/lib/music/chords";
+import { type ChordInversion, formatNote, type DiatonicChord } from "@/lib/music/chords";
+import { getVoicedNotes } from "@/lib/music/keyboard";
 import { ChordDisplay } from "./chord-display";
 
 type ProgressionSequenceProps = {
   progression: DiatonicChord[];
+  activeIndex: number | null;
   playingIndex: number | null;
   keyLabel: string;
   isPlaying: boolean;
@@ -14,6 +16,8 @@ type ProgressionSequenceProps = {
   copyMessage: string;
   onRemove: (index: number) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
+  onFocusChord: (index: number) => void;
+  onChangeInversion: (index: number, inversion: ChordInversion) => void;
   onTogglePlayback: () => void;
   onToggleLoop: () => void;
   onClear: () => void;
@@ -22,6 +26,7 @@ type ProgressionSequenceProps = {
 
 export function ProgressionSequence({
   progression,
+  activeIndex,
   playingIndex,
   keyLabel,
   isPlaying,
@@ -29,6 +34,8 @@ export function ProgressionSequence({
   copyMessage,
   onRemove,
   onReorder,
+  onFocusChord,
+  onChangeInversion,
   onTogglePlayback,
   onToggleLoop,
   onClear,
@@ -39,13 +46,15 @@ export function ProgressionSequence({
 
   const count = progression.length;
   const readout = `${count} ${count === 1 ? "Chord" : "Chords"} · ${keyLabel}`;
+  const effectiveActiveIndex = isPlaying && playingIndex !== null ? playingIndex : activeIndex;
+  const activeChord = effectiveActiveIndex !== null ? (progression[effectiveActiveIndex] ?? null) : null;
 
   return (
     <section className="border-b border-[var(--rule)] py-9">
       <header className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
         <div className="flex items-baseline gap-[10px]">
           <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-2)]">
-            04
+            05
           </span>
           <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
             Progression
@@ -104,9 +113,11 @@ export function ProgressionSequence({
         ) : (
           progression.map((chord, index) => {
             const isPlaying = playingIndex === index;
+            const isActive = effectiveActiveIndex === index;
             const isDragging = dragSource === index;
             const isDropTarget = dropTarget === index && dragSource !== index;
-            const notesDisplay = chord.notes.map(formatNote).join(" ");
+            const activeInversion = chord.inversion ?? 0;
+            const notesDisplay = getVoicedNotes(chord.notes, activeInversion).map(formatNote).join(" ");
 
             return (
               <div
@@ -138,9 +149,20 @@ export function ProgressionSequence({
                 className={`group w-[126px] cursor-grab transition duration-[var(--t)] ${isDragging ? "opacity-40" : ""}`}
               >
                 <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onFocusChord(index)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onFocusChord(index);
+                    }
+                  }}
                   className={`relative flex h-[104px] flex-col border-[0.5px] p-[10px] transition duration-[var(--t)] ${
                     isPlaying
                       ? "border-[var(--accent)] bg-[var(--accent-bg)]"
+                      : isActive
+                        ? "border-[var(--accent)] bg-[var(--accent-bg)]"
                       : isDropTarget
                         ? "border-[var(--accent)] bg-[var(--surface)]"
                         : "border-[var(--hair)] bg-[var(--surface)] hover:border-[var(--text-2)]"
@@ -150,7 +172,10 @@ export function ProgressionSequence({
                   <button
                     type="button"
                     aria-label={`Remove ${chord.chordName}`}
-                    onClick={() => onRemove(index)}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRemove(index);
+                    }}
                     className="absolute right-[8px] top-[7px] cursor-pointer font-mono text-[10px] leading-none text-[var(--text-3)] opacity-0 transition-opacity duration-[var(--t)] hover:text-[var(--text)] group-hover:opacity-100"
                   >
                     ✕
@@ -160,7 +185,10 @@ export function ProgressionSequence({
                       type="button"
                       aria-label={`Move ${chord.chordName} left`}
                       disabled={index === 0}
-                      onClick={() => onReorder(index, index - 1)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onReorder(index, index - 1);
+                      }}
                       className="cursor-pointer font-mono text-[10px] leading-none text-[var(--text-3)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       ←
@@ -169,17 +197,27 @@ export function ProgressionSequence({
                       type="button"
                       aria-label={`Move ${chord.chordName} right`}
                       disabled={index === progression.length - 1}
-                      onClick={() => onReorder(index, index + 1)}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onReorder(index, index + 1);
+                      }}
                       className="cursor-pointer font-mono text-[10px] leading-none text-[var(--text-3)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       →
                     </button>
                   </div>
-                  <div
-                    className="font-mono font-medium leading-none text-[var(--text)]"
-                    style={{ fontSize: "16px", letterSpacing: "-0.01em" }}
-                  >
-                    {chord.romanNumeral}
+                  <div className="flex items-start justify-between gap-6 pr-6">
+                    <div>
+                      <div
+                        className="font-mono font-medium leading-none text-[var(--text)]"
+                        style={{ fontSize: "16px", letterSpacing: "-0.01em" }}
+                      >
+                        {chord.romanNumeral}
+                      </div>
+                      <div className="mt-[6px] font-mono text-[9px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
+                        {getInversionLabel(activeInversion)}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="mt-auto flex items-baseline justify-between gap-2">
@@ -200,6 +238,42 @@ export function ProgressionSequence({
           })
         )}
       </div>
+
+      {activeChord && effectiveActiveIndex !== null ? (
+        <div className="mt-4 flex flex-wrap gap-[6px]">
+          {getInversionOptions(activeChord.notes.length).map((inversion) => {
+            const isActive = inversion === (activeChord.inversion ?? 0);
+
+            return (
+              <button
+                key={inversion}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => onChangeInversion(effectiveActiveIndex, inversion)}
+                className={`flex h-[26px] min-w-[44px] cursor-pointer items-center justify-center border-[0.5px] px-2 text-center font-mono text-[10px] font-medium uppercase leading-none tracking-[0.12em] transition duration-[var(--t)] ${
+                  isActive
+                    ? "border-[var(--accent)] bg-[var(--accent-bg)] text-[var(--accent)]"
+                    : "border-[var(--hair)] text-[var(--text-3)] hover:border-[var(--text-2)] hover:text-[var(--text)]"
+                }`}
+                style={{ borderRadius: "var(--radius)" }}
+              >
+                {getInversionLabel(inversion)}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
     </section>
   );
+}
+
+function getInversionOptions(noteCount: number): ChordInversion[] {
+  return [0, 1, 2, 3].filter((inversion) => inversion < noteCount) as ChordInversion[];
+}
+
+function getInversionLabel(inversion: ChordInversion) {
+  if (inversion === 0) return "Root";
+  if (inversion === 1) return "1st";
+  if (inversion === 2) return "2nd";
+  return "3rd";
 }

@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { getCenteredRootFloorKey, getKeyRelativeRootPositionKeyIds, getVisibleChordToneKeyIds } from "./keyboard";
+import {
+  getCenteredRootFloorKey,
+  getKeyRelativeRootPositionKeyIds,
+  getKeyRelativeVoicingKeyIds,
+  getVoicedNotes,
+  getVisibleChordToneKeyIds,
+} from "./keyboard";
 
 describe("getCenteredRootFloorKey", () => {
   it("chooses C3 for C major triads so all degrees move upward", () => {
@@ -68,5 +74,20 @@ describe("getVisibleChordToneKeyIds", () => {
 
   it("matches enharmonic chord tones to their visible piano keys", () => {
     expect([...getVisibleChordToneKeyIds(["Bb", "D", "F"])]).toContain("A#3");
+  });
+});
+
+describe("getKeyRelativeVoicingKeyIds", () => {
+  it("moves inverted notes above the lower chord tones", () => {
+    expect([...getKeyRelativeVoicingKeyIds(["C", "E", "G"], "C3", 1)]).toEqual(["E3", "G3", "C4"]);
+    expect([...getKeyRelativeVoicingKeyIds(["C", "E", "G", "B"], "C3", 3)]).toEqual(["B3", "C4", "E4", "G4"]);
+  });
+});
+
+describe("getVoicedNotes", () => {
+  it("returns notes in inversion order for display", () => {
+    expect(getVoicedNotes(["C", "E", "G"], 0)).toEqual(["C", "E", "G"]);
+    expect(getVoicedNotes(["C", "E", "G"], 1)).toEqual(["E", "G", "C"]);
+    expect(getVoicedNotes(["C", "E", "G", "B"], 3)).toEqual(["B", "C", "E", "G"]);
   });
 });
