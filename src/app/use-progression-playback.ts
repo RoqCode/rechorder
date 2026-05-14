@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
+  type AudioVoice,
   type AudioArt,
   getChordPlaybackDuration,
   playChordPreview,
@@ -14,6 +15,7 @@ type PlaybackSettings = {
   volume: number;
   tempo: number;
   audioArt: AudioArt;
+  ambience: number;
 };
 
 type UseProgressionPlaybackInput = {
@@ -36,7 +38,7 @@ export function useProgressionPlayback({
   const [isLooping, setIsLooping] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
   const timeoutsRef = useRef<number[]>([]);
-  const oscillatorsRef = useRef<OscillatorNode[]>([]);
+  const voicesRef = useRef<AudioVoice[]>([]);
   const isLoopingRef = useRef(isLooping);
 
   useEffect(() => {
@@ -46,7 +48,7 @@ export function useProgressionPlayback({
   useEffect(() => {
     return () => {
       clearTimers();
-      stopOscillators();
+      stopVoices();
     };
   }, []);
 
@@ -60,15 +62,9 @@ export function useProgressionPlayback({
     timeoutsRef.current = [];
   }
 
-  function stopOscillators() {
-    oscillatorsRef.current.forEach((oscillator) => {
-      try {
-        oscillator.stop();
-      } catch {
-        // already finished
-      }
-    });
-    oscillatorsRef.current = [];
+  function stopVoices() {
+    voicesRef.current.forEach((voice) => voice.stop());
+    voicesRef.current = [];
   }
 
   function playChord(chord: DiatonicChord) {
@@ -93,7 +89,7 @@ export function useProgressionPlayback({
     if (progression.length === 0) return;
 
     clearTimers();
-    stopOscillators();
+    stopVoices();
     setIsPlaying(true);
 
     if (settings.isMuted) {
@@ -108,7 +104,7 @@ export function useProgressionPlayback({
     function scheduleCycle(cycleStartTime: number) {
       progression.forEach((chord, index) => {
         const chordStartTime = cycleStartTime + index * chordDuration;
-        oscillatorsRef.current.push(
+        voicesRef.current.push(
           ...playChordPreview({
             audioContext,
             chord,
@@ -149,7 +145,7 @@ export function useProgressionPlayback({
 
   function stopPlayback() {
     clearTimers();
-    stopOscillators();
+    stopVoices();
     setIsPlaying(false);
     setPlayingIndex(null);
   }

@@ -9,6 +9,7 @@ export type AudioSettings = {
   volume: number;
   tempo: number;
   audioArt: AudioArt;
+  ambience: number;
 };
 
 export const MIN_TEMPO = 60;
@@ -20,6 +21,92 @@ type PlayChordPreviewInput = {
   rootFloorKey: string;
   settings: AudioSettings;
   startTime?: number;
+};
+
+export type AudioVoice = {
+  stop: (when?: number) => void;
+};
+
+type AudioGraph = {
+  input: GainNode;
+  dryGain: GainNode;
+  wetGain: GainNode;
+};
+
+type InstrumentPreset = {
+  attack: number;
+  decay: number;
+  sustain: number;
+  release: number;
+  gain: number;
+  type: OscillatorType;
+  highpassFrequency: number;
+  filterFrequency: number;
+  filterQ: number;
+  detuneCents: number[];
+  duration: number;
+  stagger: number;
+};
+
+const AUDIO_GRAPHS = new WeakMap<AudioContext, AudioGraph>();
+
+const PRESETS: Record<AudioArt, InstrumentPreset> = {
+  piano: {
+    attack: 0.001,
+    decay: 0.22,
+    sustain: 0.18,
+    release: 0.28,
+    gain: 0.28,
+    type: "triangle",
+    highpassFrequency: 85,
+    filterFrequency: 5200,
+    filterQ: 0.7,
+    detuneCents: [0],
+    duration: 1.05,
+    stagger: 0.008,
+  },
+  pad: {
+    attack: 0.24,
+    decay: 0.45,
+    sustain: 0.56,
+    release: 0.9,
+    gain: 0.16,
+    type: "sine",
+    highpassFrequency: 95,
+    filterFrequency: 1800,
+    filterQ: 0.45,
+    detuneCents: [-5, 5],
+    duration: 1.7,
+    stagger: 0.012,
+  },
+  arp: {
+    attack: 0.004,
+    decay: 0.12,
+    sustain: 0.24,
+    release: 0.18,
+    gain: 0.34,
+    type: "triangle",
+    highpassFrequency: 90,
+    filterFrequency: 6200,
+    filterQ: 0.75,
+    detuneCents: [0],
+    duration: 0.3,
+    stagger: 0,
+  },
+  strings: {
+    attack: 0.08,
+    decay: 0.28,
+    sustain: 0.72,
+    release: 0.55,
+    gain: 0.13,
+    type: "triangle",
+    highpassFrequency: 80,
+    filterFrequency: 2600,
+    filterQ: 0.55,
+    detuneCents: [-7, 7],
+    duration: 0.9,
+    stagger: 0.004,
+  },
 };
 
 const KEY_SEMITONES: Record<string, number> = {
@@ -65,79 +152,152 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
   const chordKeyIds = [...getKeyRelativeVoicingKeyIds(chord.notes, rootFloorKey, chord.inversion ?? 0)];
   const frequencies = chordKeyIds.map(getKeyFrequency);
   const baseGain = settings.volume / 100;
-  const oscillators: OscillatorNode[] = [];
+  const preset = PRESETS[settings.audioArt];
+  const noteDuration = startTime === undefined ? preset.duration : Math.min(preset.duration, getChordPlaybackDuration(settings) * 0.88);
+  const voices: AudioVoice[] = [];
+  const graph = getAudioGraph(audioContext);
+
+  setAmbience(graph, settings.ambience);
 
   if (settings.audioArt === "arp") {
     const stepDuration = 60 / clampTempo(settings.tempo) / 2;
     frequencies.forEach((frequency, index) => {
-      oscillators.push(
-        playTone(audioContext, frequency, now + index * stepDuration, {
-          attack: 0.01,
-          duration: stepDuration * 1.35,
-          gain: baseGain * 1.1,
-          type: "triangle",
+      voices.push(
+        playTone(audioContext, graph.input, frequency, now + index * stepDuration, {
+          ...preset,
+          duration: stepDuration * 1.1,
+          gain: baseGain * preset.gain,
         }),
       );
     });
-    return oscillators;
-  }
-
-  if (settings.audioArt === "strings") {
-    const duration = getChordPlaybackDuration(settings);
-    frequencies.forEach((frequency) => {
-      oscillators.push(
-        playTone(audioContext, frequency, now, {
-          attack: 0,
-          duration,
-          gain: baseGain * 0.18,
-          type: "triangle",
-        }),
-      );
-    });
-    return oscillators;
+    return voices;
   }
 
   frequencies.forEach((frequency, index) => {
-    oscillators.push(
-      playTone(audioContext, frequency, now + index * 0.01, {
-        attack: settings.audioArt === "pad" ? 0.18 : 0.015,
-        duration: settings.audioArt === "pad" ? 2.2 : 1.2,
-        gain: settings.audioArt === "pad" ? baseGain * 0.28 : baseGain * 0.42,
-        type: settings.audioArt === "pad" ? "sine" : "triangle",
+    voices.push(
+      playTone(audioContext, graph.input, frequency, now + index * preset.stagger, {
+        ...preset,
+        duration: noteDuration,
+        gain: baseGain * preset.gain,
       }),
     );
   });
 
-  return oscillators;
+  return voices;
 }
 
-type PlayToneOptions = {
-  attack: number;
-  duration: number;
-  gain: number;
-  type: OscillatorType;
-};
+function getAudioGraph(audioContext: AudioContext) {
+  const existing = AUDIO_GRAPHS.get(audioContext);
+  if (existing) return existing;
 
-function playTone(audioContext: AudioContext, frequency: number, startTime: number, options: PlayToneOptions) {
-  const oscillator = audioContext.createOscillator();
+  const input = audioContext.createGain();
+  const dryGain = audioContext.createGain();
+  const wetGain = audioContext.createGain();
+  const convolver = audioContext.createConvolver();
+  const compressor = audioContext.createDynamicsCompressor();
+
+  input.gain.value = 0.9;
+  convolver.buffer = createRoomImpulse(audioContext);
+  compressor.threshold.value = -18;
+  compressor.knee.value = 18;
+  compressor.ratio.value = 8;
+  compressor.attack.value = 0.006;
+  compressor.release.value = 0.18;
+
+  input.connect(dryGain).connect(compressor);
+  input.connect(convolver).connect(wetGain).connect(compressor);
+  compressor.connect(audioContext.destination);
+
+  const graph = { input, dryGain, wetGain };
+  AUDIO_GRAPHS.set(audioContext, graph);
+  return graph;
+}
+
+function setAmbience(graph: AudioGraph, ambience: number) {
+  const wet = Math.min(0.35, Math.max(0, ambience / 100) * 0.35);
+  graph.dryGain.gain.value = 1 - wet * 0.45;
+  graph.wetGain.gain.value = wet;
+}
+
+function playTone(
+  audioContext: AudioContext,
+  destination: AudioNode,
+  frequency: number,
+  startTime: number,
+  options: InstrumentPreset,
+) {
+  const highpass = audioContext.createBiquadFilter();
+  const lowpass = audioContext.createBiquadFilter();
   const gain = audioContext.createGain();
+  const oscillators = options.detuneCents.map((detuneCents) => {
+    const oscillator = audioContext.createOscillator();
 
-  oscillator.type = options.type;
-  oscillator.frequency.value = frequency;
-  if (options.attack === 0) {
-    gain.gain.setValueAtTime(options.gain, startTime);
-    gain.gain.setValueAtTime(options.gain, startTime + options.duration);
-  } else {
-    gain.gain.setValueAtTime(0, startTime);
-    gain.gain.linearRampToValueAtTime(options.gain, startTime + options.attack);
-    gain.gain.exponentialRampToValueAtTime(0.001, startTime + options.duration);
+    oscillator.type = options.type;
+    oscillator.frequency.setValueAtTime(frequency, startTime);
+    oscillator.detune.setValueAtTime(detuneCents, startTime);
+    oscillator.connect(gain);
+    oscillator.start(startTime);
+
+    return oscillator;
+  });
+
+  highpass.type = "highpass";
+  highpass.frequency.setValueAtTime(options.highpassFrequency, startTime);
+  lowpass.type = "lowpass";
+  lowpass.frequency.setValueAtTime(options.filterFrequency, startTime);
+  lowpass.Q.setValueAtTime(options.filterQ, startTime);
+  gain.connect(highpass).connect(lowpass).connect(destination);
+
+  scheduleEnvelope(gain.gain, startTime, options);
+
+  const releaseStart = startTime + options.duration;
+  const stopTime = releaseStart + options.release + 0.05;
+  oscillators.forEach((oscillator) => oscillator.stop(stopTime));
+
+  return {
+    stop(when = audioContext.currentTime) {
+      const releaseTime = Math.max(audioContext.currentTime, when);
+      gain.gain.cancelScheduledValues(releaseTime);
+      gain.gain.setTargetAtTime(0.0001, releaseTime, Math.max(0.015, options.release / 4));
+      oscillators.forEach((oscillator) => {
+        try {
+          oscillator.stop(releaseTime + options.release + 0.05);
+        } catch {
+          // already stopped
+        }
+      });
+    },
+  };
+}
+
+function scheduleEnvelope(gain: AudioParam, startTime: number, options: InstrumentPreset) {
+  const peak = options.gain / Math.max(1, options.detuneCents.length);
+  const sustain = Math.max(0.0001, peak * options.sustain);
+  const attackEnd = startTime + options.attack;
+  const decayEnd = attackEnd + options.decay;
+  const releaseStart = startTime + options.duration;
+
+  gain.setValueAtTime(0.0001, startTime);
+  gain.linearRampToValueAtTime(peak, attackEnd);
+  gain.exponentialRampToValueAtTime(sustain, decayEnd);
+  gain.setValueAtTime(sustain, releaseStart);
+  gain.exponentialRampToValueAtTime(0.0001, releaseStart + options.release);
+}
+
+function createRoomImpulse(audioContext: AudioContext) {
+  const duration = 1.25;
+  const sampleCount = Math.floor(audioContext.sampleRate * duration);
+  const impulse = audioContext.createBuffer(2, sampleCount, audioContext.sampleRate);
+
+  for (let channel = 0; channel < impulse.numberOfChannels; channel += 1) {
+    const data = impulse.getChannelData(channel);
+    for (let index = 0; index < sampleCount; index += 1) {
+      const decay = (1 - index / sampleCount) ** 2.4;
+      data[index] = (Math.random() * 2 - 1) * decay * 0.45;
+    }
   }
 
-  oscillator.connect(gain).connect(audioContext.destination);
-  oscillator.start(startTime);
-  oscillator.stop(startTime + options.duration + 0.05);
-
-  return oscillator;
+  return impulse;
 }
 
 function getKeyFrequency(keyId: string) {

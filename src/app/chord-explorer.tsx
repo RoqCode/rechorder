@@ -60,6 +60,7 @@ export function ChordExplorer() {
   );
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(85);
+  const [ambience, setAmbience] = useState(18);
   const [tempo, setTempo] = useState(100);
   const [audioArt, setAudioArt] = useState<AudioArt>("piano");
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
@@ -113,7 +114,7 @@ export function ChordExplorer() {
   } = useProgressionPlayback({
     progression,
     rootFloorKey,
-    settings: { isMuted, volume, tempo, audioArt },
+    settings: { isMuted, volume, tempo, audioArt, ambience },
     onMutedChange: setIsMuted,
     onChordFocus: focusChord,
   });
@@ -195,6 +196,11 @@ export function ChordExplorer() {
   function handleVolumeChange(nextVolume: number) {
     stopPlayback();
     setVolume(nextVolume);
+  }
+
+  function handleAmbienceChange(nextAmbience: number) {
+    stopPlayback();
+    setAmbience(nextAmbience);
   }
 
   function handleTempoChange(nextTempo: number) {
@@ -518,10 +524,12 @@ export function ChordExplorer() {
               volume={volume}
               tempo={tempo}
               audioArt={audioArt}
+              ambience={ambience}
               onMutedChange={handleMutedChange}
               onVolumeChange={handleVolumeChange}
               onTempoChange={handleTempoChange}
               onAudioArtChange={handleAudioArtChange}
+              onAmbienceChange={handleAmbienceChange}
             />
           </footer>
         </div>

@@ -14,10 +14,12 @@ type AudioControlsProps = {
   volume: number;
   tempo: number;
   audioArt: AudioArt;
+  ambience: number;
   onMutedChange: (isMuted: boolean) => void;
   onVolumeChange: (volume: number) => void;
   onTempoChange: (tempo: number) => void;
   onAudioArtChange: (audioArt: AudioArt) => void;
+  onAmbienceChange: (ambience: number) => void;
 };
 
 /** Slim hardware-readout style audio bar — lives in the Progression zone's
@@ -27,10 +29,12 @@ export function AudioControls({
   volume,
   tempo,
   audioArt,
+  ambience,
   onMutedChange,
   onVolumeChange,
   onTempoChange,
   onAudioArtChange,
+  onAmbienceChange,
 }: AudioControlsProps) {
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[10px] uppercase tracking-[0.10em] text-[var(--text-3)]">
@@ -57,6 +61,18 @@ export function AudioControls({
           max="100"
           value={volume}
           onChange={(event) => onVolumeChange(Number(event.target.value))}
+        />
+      </label>
+
+      <label className="flex items-center gap-2">
+        <span>FX {String(ambience).padStart(3, "0")}</span>
+        <input
+          className="h-1 w-[88px] accent-[var(--accent)]"
+          type="range"
+          min="0"
+          max="100"
+          value={ambience}
+          onChange={(event) => onAmbienceChange(Number(event.target.value))}
         />
       </label>
 
