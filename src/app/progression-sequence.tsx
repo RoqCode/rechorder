@@ -155,6 +155,26 @@ export function ProgressionSequence({
                   >
                     ✕
                   </button>
+                  <div className="absolute right-[8px] top-[26px] flex gap-1 opacity-0 transition-opacity duration-[var(--t)] group-hover:opacity-100 group-focus-within:opacity-100">
+                    <button
+                      type="button"
+                      aria-label={`Move ${chord.chordName} left`}
+                      disabled={index === 0}
+                      onClick={() => onReorder(index, index - 1)}
+                      className="cursor-pointer font-mono text-[10px] leading-none text-[var(--text-3)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      ←
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Move ${chord.chordName} right`}
+                      disabled={index === progression.length - 1}
+                      onClick={() => onReorder(index, index + 1)}
+                      className="cursor-pointer font-mono text-[10px] leading-none text-[var(--text-3)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      →
+                    </button>
+                  </div>
                   <div
                     className="font-mono font-medium leading-none text-[var(--text)]"
                     style={{ fontSize: "16px", letterSpacing: "-0.01em" }}

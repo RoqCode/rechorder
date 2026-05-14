@@ -11,6 +11,9 @@ export type AudioSettings = {
   audioArt: AudioArt;
 };
 
+export const MIN_TEMPO = 60;
+export const MAX_TEMPO = 180;
+
 type PlayChordPreviewInput = {
   audioContext: AudioContext;
   chord: DiatonicChord;
@@ -35,11 +38,18 @@ const KEY_SEMITONES: Record<string, number> = {
 };
 
 export function getChordPlaybackDuration(settings: AudioSettings) {
+  const tempo = clampTempo(settings.tempo);
+
   if (settings.audioArt === "arp") {
-    return (60 / settings.tempo / 2) * 4;
+    return (60 / tempo / 2) * 4;
   }
 
-  return 60 / settings.tempo;
+  return 60 / tempo;
+}
+
+export function clampTempo(tempo: number) {
+  if (!Number.isFinite(tempo)) return 100;
+  return Math.min(MAX_TEMPO, Math.max(MIN_TEMPO, Math.round(tempo)));
 }
 
 export function playChordPreview({ audioContext, chord, rootFloorKey, settings, startTime }: PlayChordPreviewInput) {
@@ -58,7 +68,7 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
   const oscillators: OscillatorNode[] = [];
 
   if (settings.audioArt === "arp") {
-    const stepDuration = 60 / settings.tempo / 2;
+    const stepDuration = 60 / clampTempo(settings.tempo) / 2;
     frequencies.forEach((frequency, index) => {
       oscillators.push(
         playTone(audioContext, frequency, now + index * stepDuration, {

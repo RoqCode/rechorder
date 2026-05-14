@@ -1,51 +1,30 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
   type ChordType,
   type DiatonicChord,
+  formatNote,
   getDiatonicChords,
+  getPitchClass,
   getScale,
   getSupportedTonics,
   MODE_DESCRIPTORS,
   type MusicMode,
 } from "@/lib/music/chords";
-import {
-  type AudioArt,
-  getChordPlaybackDuration,
-  playChordPreview,
-} from "@/lib/audio/chord-audio";
+import { type AudioArt } from "@/lib/audio/chord-audio";
 import { getCenteredRootFloorKey } from "@/lib/music/keyboard";
 
 import { AudioControls } from "./audio-controls";
 import { ChordGrid } from "./chord-grid";
 import { LibrarySidebar } from "./library-sidebar";
 import { PianoKeyboard } from "./piano-keyboard";
-import {
-  createProgression,
-  deleteProgression,
-  listProgressions,
-  type SavedProgression,
-  updateProgression,
-} from "./progression-actions";
+import { type SavedProgression } from "./progression-actions";
 import { ProgressionSequence } from "./progression-sequence";
 import { Selectors } from "./selectors";
-
-const NOTE_PITCH_CLASSES: Record<string, number> = {
-  C: 0,
-  "C#": 1, Db: 1,
-  D: 2,
-  "D#": 3, Eb: 3,
-  E: 4, Fb: 4,
-  F: 5,
-  "F#": 6, Gb: 6,
-  G: 7,
-  "G#": 8, Ab: 8,
-  A: 9,
-  "A#": 10, Bb: 10,
-  B: 11, Cb: 11,
-};
+import { useProgressionLibrary } from "./use-progression-library";
+import { useProgressionPlayback } from "./use-progression-playback";
 
 type KeyboardDisplayMode = "scale" | "chord";
 
@@ -56,26 +35,27 @@ export function ChordExplorer() {
   const [selectedDegree, setSelectedDegree] = useState<number | null>(null);
   const [keyboardDisplayMode, setKeyboardDisplayMode] = useState<KeyboardDisplayMode>("scale");
   const [progression, setProgression] = useState<DiatonicChord[]>([]);
-  const [library, setLibrary] = useState<SavedProgression[]>([]);
   const [progressionName, setProgressionName] = useState("");
   const [progressionNotes, setProgressionNotes] = useState("");
   const [loadedProgressionId, setLoadedProgressionId] = useState<string | null>(null);
-  const [deleteConfirmationId, setDeleteConfirmationId] = useState<string | null>(null);
-  const [playingProgressionIndex, setPlayingProgressionIndex] = useState<number | null>(null);
-  const [isPlayingProgression, setIsPlayingProgression] = useState(false);
-  const [isLooping, setIsLooping] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(85);
   const [tempo, setTempo] = useState(100);
   const [audioArt, setAudioArt] = useState<AudioArt>("piano");
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-  const [statusMessage, setStatusMessage] = useState("");
   const [copyMessage, setCopyMessage] = useState("");
-  const [isPending, startTransition] = useTransition();
-
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const playbackTimeoutsRef = useRef<number[]>([]);
-  const playbackOscillatorsRef = useRef<OscillatorNode[]>([]);
+  const previewChordRef = useRef<(chord: DiatonicChord) => void>(() => {});
+  const removeChordRef = useRef<(index: number) => void>(() => {});
+  const {
+    library,
+    statusMessage,
+    setStatusMessage,
+    deleteConfirmationId,
+    setDeleteConfirmationId,
+    isPending,
+    saveProgression: persistProgression,
+    removeProgression: removePersistedProgression,
+  } = useProgressionLibrary();
 
   const chords = useMemo(
     () => getDiatonicChords({ tonic, mode, chordType }),
@@ -91,35 +71,30 @@ export function ChordExplorer() {
     [tonic, chords],
   );
   const modeDescriptor = MODE_DESCRIPTORS[mode];
-  const tonicGlyph = formatTonicGlyph(tonic);
+  const tonicGlyph = formatNote(tonic);
   const keyLabel = `${tonicGlyph} ${modeDescriptor.label}`;
   const canSave =
     progression.length > 0 && progressionName.trim().length > 0;
+  const {
+    playingIndex,
+    isPlaying,
+    isLooping,
+    setIsLooping,
+    playChord,
+    togglePlayback,
+    stopPlayback,
+  } = useProgressionPlayback({
+    progression,
+    rootFloorKey,
+    settings: { isMuted, volume, tempo, audioArt },
+    onMutedChange: setIsMuted,
+    onChordFocus: focusChord,
+  });
 
   useEffect(() => {
-    startTransition(async () => {
-      try {
-        setLibrary(await listProgressions());
-      } catch (error) {
-        setStatusMessage(error instanceof Error ? error.message : "Could not load library");
-      }
-    });
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      playbackTimeoutsRef.current.forEach(window.clearTimeout);
-      playbackTimeoutsRef.current = [];
-      playbackOscillatorsRef.current.forEach((oscillator) => {
-        try {
-          oscillator.stop();
-        } catch {
-          // already finished
-        }
-      });
-      playbackOscillatorsRef.current = [];
-    };
-  }, []);
+    previewChordRef.current = previewChord;
+    removeChordRef.current = removeChord;
+  });
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -130,10 +105,10 @@ export function ChordExplorer() {
         const index = Number(event.key) - 1;
         if (index < chords.length) {
           const chord = chords[index];
-          previewChord(chord);
+          previewChordRef.current(chord);
         }
       } else if (event.key === "Backspace" && progression.length > 0) {
-        removeChord(progression.length - 1);
+        removeChordRef.current(progression.length - 1);
       } else if (event.key === "Escape") {
         setSelectedDegree(null);
       }
@@ -141,23 +116,24 @@ export function ChordExplorer() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chords, progression.length]);
 
   function handleTonicChange(nextTonic: string) {
+    stopPlayback();
     setTonic(nextTonic);
     setKeyboardDisplayMode("scale");
     setSelectedDegree(null);
   }
 
   function handleModeChange(nextMode: MusicMode) {
+    stopPlayback();
     setMode(nextMode);
     setKeyboardDisplayMode("scale");
     setSelectedDegree(null);
     // Try to keep the same pitch class for the tonic when switching modes.
     const supported = getSupportedTonics(nextMode);
-    const targetPc = NOTE_PITCH_CLASSES[tonic];
-    const sameClass = supported.find((candidate) => NOTE_PITCH_CLASSES[candidate] === targetPc);
+    const targetPc = getPitchClass(tonic);
+    const sameClass = supported.find((candidate) => getPitchClass(candidate) === targetPc);
     if (sameClass) {
       setTonic(sameClass);
     } else {
@@ -165,141 +141,64 @@ export function ChordExplorer() {
     }
   }
 
+  function handleChordTypeChange(nextChordType: ChordType) {
+    stopPlayback();
+    setChordType(nextChordType);
+  }
+
+  function handleMutedChange(nextIsMuted: boolean) {
+    stopPlayback();
+    setIsMuted(nextIsMuted);
+  }
+
+  function handleVolumeChange(nextVolume: number) {
+    stopPlayback();
+    setVolume(nextVolume);
+  }
+
+  function handleTempoChange(nextTempo: number) {
+    stopPlayback();
+    setTempo(nextTempo);
+  }
+
+  function handleAudioArtChange(nextAudioArt: AudioArt) {
+    stopPlayback();
+    setAudioArt(nextAudioArt);
+  }
+
   function previewChord(chord: DiatonicChord) {
-    setKeyboardDisplayMode("chord");
-    setSelectedDegree(chord.degree);
+    focusChord(chord);
     playChord(chord);
   }
 
   function appendChord(chord: DiatonicChord) {
-    setKeyboardDisplayMode("chord");
-    setSelectedDegree(chord.degree);
+    focusChord(chord);
     addChord(chord);
     playChord(chord);
   }
 
-  function playChord(chord: DiatonicChord) {
-    playChordPreview({
-      audioContext: getAudioContext(),
-      chord,
-      rootFloorKey,
-      settings: { isMuted, volume, tempo, audioArt },
-    });
-  }
-
-  function getAudioContext() {
-    audioContextRef.current ??= new AudioContext();
-    return audioContextRef.current;
-  }
-
-  function clearPlaybackTimers() {
-    playbackTimeoutsRef.current.forEach(window.clearTimeout);
-    playbackTimeoutsRef.current = [];
-  }
-
-  function stopPlaybackOscillators() {
-    playbackOscillatorsRef.current.forEach((oscillator) => {
-      try {
-        oscillator.stop();
-      } catch {
-        // already finished
-      }
-    });
-    playbackOscillatorsRef.current = [];
-  }
-
-  function toggleProgressionPlayback() {
-    if (isPlayingProgression) {
-      stopProgressionPlayback();
-      return;
-    }
-
-    startProgressionPlayback();
-  }
-
-  function startProgressionPlayback() {
-    if (progression.length === 0) return;
-
-    clearPlaybackTimers();
-    setIsPlayingProgression(true);
-
-    if (isMuted) {
-      setIsMuted(false);
-    }
-
-    const audioContext = getAudioContext();
-    const settings = { isMuted: false, volume, tempo, audioArt };
-    const chordDuration = getChordPlaybackDuration(settings);
-    const cycleDuration = progression.length * chordDuration;
-
-    function scheduleCycle(cycleStartTime: number) {
-      progression.forEach((chord, index) => {
-        const chordStartTime = cycleStartTime + index * chordDuration;
-        playbackOscillatorsRef.current.push(
-          ...playChordPreview({
-            audioContext,
-            chord,
-            rootFloorKey,
-            settings,
-            startTime: chordStartTime,
-          }),
-        );
-
-        playbackTimeoutsRef.current.push(
-          window.setTimeout(
-            () => {
-              setPlayingProgressionIndex(index);
-              setKeyboardDisplayMode("chord");
-              setSelectedDegree(chord.degree);
-            },
-            Math.max(0, (chordStartTime - audioContext.currentTime) * 1000),
-          ),
-        );
-      });
-
-      playbackTimeoutsRef.current.push(
-        window.setTimeout(
-          () => {
-            setPlayingProgressionIndex(null);
-            if (isLooping) {
-              scheduleCycle(audioContext.currentTime + 0.05);
-              return;
-            }
-            setIsPlayingProgression(false);
-            playbackOscillatorsRef.current = [];
-          },
-          Math.max(0, (cycleStartTime + cycleDuration - audioContext.currentTime) * 1000),
-        ),
-      );
-    }
-
-    scheduleCycle(audioContext.currentTime + 0.05);
-  }
-
-  function stopProgressionPlayback() {
-    clearPlaybackTimers();
-    stopPlaybackOscillators();
-    setIsPlayingProgression(false);
-    setPlayingProgressionIndex(null);
+  function focusChord(chord: DiatonicChord) {
+    setKeyboardDisplayMode("chord");
+    setSelectedDegree(chord.degree);
   }
 
   function addChord(chord: DiatonicChord) {
-    stopProgressionPlayback();
+    stopPlayback();
     setProgression((current) => [...current, chord]);
   }
 
   function clearProgression() {
-    stopProgressionPlayback();
+    stopPlayback();
     setProgression([]);
   }
 
   function removeChord(index: number) {
-    stopProgressionPlayback();
+    stopPlayback();
     setProgression((current) => current.filter((_, i) => i !== index));
   }
 
   function reorderChord(fromIndex: number, toIndex: number) {
-    stopProgressionPlayback();
+    stopPlayback();
     setProgression((current) => {
       const next = [...current];
       const [moved] = next.splice(fromIndex, 1);
@@ -309,27 +208,16 @@ export function ChordExplorer() {
   }
 
   function saveProgression() {
-    startTransition(async () => {
-      try {
-        const input = {
-          name: progressionName.trim(),
-          tonic,
-          mode,
-          chordType,
-          chords: progression,
-          notes: progressionNotes.trim(),
-        };
-
-        const saved = loadedProgressionId
-          ? await updateProgression({ ...input, id: loadedProgressionId })
-          : await createProgression(input);
-
-        setLoadedProgressionId(saved.id);
-        setLibrary(await listProgressions());
-        setStatusMessage(loadedProgressionId ? "Updated" : "Saved");
-      } catch (error) {
-        setStatusMessage(error instanceof Error ? error.message : "Could not save progression");
-      }
+    persistProgression({
+      id: loadedProgressionId,
+      name: progressionName.trim(),
+      tonic,
+      mode,
+      chordType,
+      chords: progression,
+      notes: progressionNotes.trim(),
+    }, (saved) => {
+      setLoadedProgressionId(saved.id);
     });
   }
 
@@ -342,7 +230,7 @@ export function ChordExplorer() {
   }
 
   function loadSavedProgression(saved: SavedProgression) {
-    stopProgressionPlayback();
+    stopPlayback();
     setTonic(saved.tonic);
     setMode(saved.mode);
     setChordType(saved.chordType);
@@ -356,17 +244,9 @@ export function ChordExplorer() {
   }
 
   function removeSavedProgression(id: string) {
-    startTransition(async () => {
-      try {
-        await deleteProgression(id);
-        setLibrary(await listProgressions());
-        if (loadedProgressionId === id) {
-          setLoadedProgressionId(null);
-        }
-        setDeleteConfirmationId(null);
-        setStatusMessage("Deleted");
-      } catch (error) {
-        setStatusMessage(error instanceof Error ? error.message : "Could not delete progression");
+    removePersistedProgression(id, () => {
+      if (loadedProgressionId === id) {
+        setLoadedProgressionId(null);
       }
     });
   }
@@ -387,8 +267,8 @@ export function ChordExplorer() {
   }
 
   const keyboardReadout = keyboardDisplayMode === "chord" && selectedChord
-    ? `${selectedChord.chordName.replace("dim", "°")} · ${selectedChord.notes.map(formatTonicGlyph).join(" ")}`
-    : `${keyLabel} · ${scale.map(formatTonicGlyph).join(" ")}`;
+    ? `${selectedChord.chordName.replace("dim", "°")} · ${selectedChord.notes.map(formatNote).join(" ")}`
+    : `${keyLabel} · ${scale.map(formatNote).join(" ")}`;
   const keyboardNotes = keyboardDisplayMode === "chord" ? (selectedChord?.notes ?? []) : scale;
 
   return (
@@ -433,7 +313,7 @@ export function ChordExplorer() {
             chordType={chordType}
             onPreviewChord={previewChord}
             onAddChord={appendChord}
-            onChangeChordType={setChordType}
+            onChangeChordType={handleChordTypeChange}
           />
 
           {/* ZONE 3 */}
@@ -460,14 +340,14 @@ export function ChordExplorer() {
           {/* ZONE 4 */}
           <ProgressionSequence
             progression={progression}
-            playingIndex={playingProgressionIndex}
+            playingIndex={playingIndex}
             keyLabel={keyLabel}
-            isPlaying={isPlayingProgression}
+            isPlaying={isPlaying}
             isLooping={isLooping}
             copyMessage={copyMessage}
             onRemove={removeChord}
             onReorder={reorderChord}
-            onTogglePlayback={toggleProgressionPlayback}
+            onTogglePlayback={togglePlayback}
             onToggleLoop={() => setIsLooping((current) => !current)}
             onClear={clearProgression}
             onCopy={copyAsText}
@@ -480,10 +360,10 @@ export function ChordExplorer() {
               volume={volume}
               tempo={tempo}
               audioArt={audioArt}
-              onMutedChange={setIsMuted}
-              onVolumeChange={setVolume}
-              onTempoChange={setTempo}
-              onAudioArtChange={setAudioArt}
+              onMutedChange={handleMutedChange}
+              onVolumeChange={handleVolumeChange}
+              onTempoChange={handleTempoChange}
+              onAudioArtChange={handleAudioArtChange}
             />
           </footer>
         </div>
@@ -511,8 +391,4 @@ export function ChordExplorer() {
       />
     </div>
   );
-}
-
-function formatTonicGlyph(note: string) {
-  return note.replace("##", "𝄪").replace("bb", "𝄫").replace("#", "♯").replace("b", "♭");
 }

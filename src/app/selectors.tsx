@@ -3,21 +3,15 @@
 import { useMemo } from "react";
 
 import {
+  formatNote,
   getScale,
+  getPitchClass,
   getSupportedTonics,
   MODE_DESCRIPTORS,
   MUSIC_MODES,
   type MusicMode,
 } from "@/lib/music/chords";
 import { NoteDisplay } from "./chord-display";
-
-function glyphify(note: string) {
-  return note
-    .replace("##", "𝄪")
-    .replace("bb", "𝄫")
-    .replace("#", "♯")
-    .replace("b", "♭");
-}
 
 type SelectorsProps = {
   tonic: string;
@@ -62,28 +56,6 @@ const PC_TO_PREFERRED_TONIC: Record<number, { sharp: string; flat: string }> = {
   11: { sharp: "B", flat: "B" },
 };
 
-const NOTE_PITCH_CLASSES: Record<string, number> = {
-  C: 0,
-  "C#": 1,
-  Db: 1,
-  D: 2,
-  "D#": 3,
-  Eb: 3,
-  E: 4,
-  Fb: 4,
-  F: 5,
-  "F#": 6,
-  Gb: 6,
-  G: 7,
-  "G#": 8,
-  Ab: 8,
-  A: 9,
-  "A#": 10,
-  Bb: 10,
-  B: 11,
-  Cb: 11,
-};
-
 function pickTonicForPitchClass(
   pc: number,
   supportedTonics: string[],
@@ -91,7 +63,7 @@ function pickTonicForPitchClass(
   const preferred = PC_TO_PREFERRED_TONIC[pc];
   if (supportedTonics.includes(preferred.sharp)) return preferred.sharp;
   if (supportedTonics.includes(preferred.flat)) return preferred.flat;
-  return supportedTonics.find((t) => NOTE_PITCH_CLASSES[t] === pc) ?? null;
+  return supportedTonics.find((tonic) => getPitchClass(tonic) === pc) ?? null;
 }
 
 export function Selectors({
@@ -101,7 +73,7 @@ export function Selectors({
   onModeChange,
 }: SelectorsProps) {
   const supportedTonics = useMemo(() => getSupportedTonics(mode), [mode]);
-  const tonicPitchClass = NOTE_PITCH_CLASSES[tonic] ?? 0;
+  const tonicPitchClass = getPitchClass(tonic);
   const scale = useMemo(() => getScale(tonic, mode), [tonic, mode]);
 
   const descriptor = MODE_DESCRIPTORS[mode];
@@ -149,7 +121,7 @@ export function Selectors({
                 />
                 {candidate ? (
                   <span className="pointer-events-none absolute left-1/2 top-[calc(100%+8px)] -translate-x-1/2 whitespace-nowrap font-mono text-[10px] text-[var(--text-2)] opacity-0 transition-opacity duration-[var(--t)] group-hover:opacity-100">
-                    {candidate.replace("#", "♯").replace("b", "♭")}
+                    {formatNote(candidate)}
                   </span>
                 ) : null}
               </button>
@@ -158,7 +130,7 @@ export function Selectors({
         </div>
         <ReadoutLine className="mt-[26px]">
           <strong className="font-medium text-[var(--text-2)]">
-            {scale.map(glyphify).join(" ")}
+            {scale.map(formatNote).join(" ")}
           </strong>
           <Dot />
           <span>Scale</span>

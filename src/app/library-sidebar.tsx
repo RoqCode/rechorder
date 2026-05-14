@@ -1,12 +1,8 @@
 "use client";
 
-import { MODE_DESCRIPTORS, type ChordType } from "@/lib/music/chords";
+import { formatNote, MODE_DESCRIPTORS } from "@/lib/music/chords";
+import { CHORD_TYPE_LABELS } from "./chord-type-labels";
 import type { SavedProgression } from "./progression-actions";
-
-const CHORD_TYPE_LABELS: Record<ChordType, string> = {
-  triads: "Triads",
-  sevenths: "Sevenths",
-};
 
 type LibrarySidebarProps = {
   library: SavedProgression[];
@@ -90,6 +86,7 @@ export function LibrarySidebar({
           {/* SAVE FORM */}
           <div className="grid gap-2 border-b border-[var(--hair)] pb-6">
             <input
+              aria-label="Take name"
               className="h-9 border-[0.5px] border-[var(--hair)] bg-[var(--surface)] px-2 font-mono text-[11px] tracking-[0.04em] text-[var(--text)] outline-none placeholder:text-[var(--text-3)] focus:border-[var(--text-2)]"
               style={{ borderRadius: "var(--radius)" }}
               value={name}
@@ -97,6 +94,7 @@ export function LibrarySidebar({
               onChange={(event) => onNameChange(event.target.value)}
             />
             <textarea
+              aria-label="Notes"
               className="min-h-[60px] resize-none border-[0.5px] border-[var(--hair)] bg-[var(--surface)] px-2 py-2 font-mono text-[11px] leading-[1.45] tracking-[0.04em] text-[var(--text)] outline-none placeholder:text-[var(--text-3)] focus:border-[var(--text-2)]"
               style={{ borderRadius: "var(--radius)" }}
               value={notes}
@@ -124,7 +122,7 @@ export function LibrarySidebar({
               </button>
             </div>
             {statusMessage ? (
-              <p className="font-mono text-[10px] uppercase tracking-[0.10em] text-[var(--text-3)]">
+              <p role="status" className="font-mono text-[10px] uppercase tracking-[0.10em] text-[var(--text-3)]">
                 {statusMessage}
               </p>
             ) : null}
@@ -191,7 +189,7 @@ function TakeRow({
   onDelete,
 }: TakeRowProps) {
   const mode = MODE_DESCRIPTORS[take.mode];
-  const tonicGlyph = take.tonic.replace("#", "♯").replace("b", "♭");
+  const tonicGlyph = formatNote(take.tonic);
 
   return (
     <div

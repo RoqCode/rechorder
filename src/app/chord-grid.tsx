@@ -9,11 +9,7 @@ import {
   type MusicMode,
 } from "@/lib/music/chords";
 import { ChordDisplay } from "./chord-display";
-
-const CHORD_TYPE_LABELS: Record<ChordType, string> = {
-  triads: "Triads",
-  sevenths: "Sevenths",
-};
+import { CHORD_TYPE_LABELS } from "./chord-type-labels";
 
 type ChordGridProps = {
   chords: DiatonicChord[];
@@ -86,15 +82,7 @@ export function ChordGrid({
           return (
             <div
               key={`${chord.degree}-${chord.romanNumeral}`}
-              role="button"
-              tabIndex={0}
-              onClick={() => onPreviewChord(chord)}
-              onKeyDown={(event) => {
-                if (event.key !== "Enter" && event.key !== " ") return;
-                event.preventDefault();
-                onPreviewChord(chord);
-              }}
-              className={`group relative flex aspect-square min-h-[140px] cursor-pointer flex-col p-3 text-left transition duration-[var(--t)] ${
+              className={`group relative aspect-square min-h-[140px] ${
                 isSelected
                   ? "border-[0.5px] border-[var(--accent)] bg-[var(--accent-bg)]"
                   : isDominant
@@ -105,42 +93,42 @@ export function ChordGrid({
             >
               <button
                 type="button"
+                onClick={() => onPreviewChord(chord)}
+                className="flex h-full w-full cursor-pointer flex-col p-3 text-left"
+                aria-label={`Preview ${chord.romanNumeral} ${chord.chordName}, ${degreeFunction}, notes ${notesDisplay}`}
+                aria-pressed={isSelected}
+              >
+                <div>
+                  <div
+                    className="font-mono font-medium leading-none text-[var(--text)]"
+                    style={{ fontSize: "18px", letterSpacing: "-0.01em" }}
+                  >
+                    {chord.romanNumeral}
+                  </div>
+                  <div className="mt-[6px] font-mono text-[10px] uppercase leading-none tracking-[0.12em] text-[var(--text-3)]">
+                    {degreeFunction}
+                  </div>
+                </div>
+
+                <div className="mt-auto flex items-baseline justify-between gap-2">
+                  <ChordDisplay chordName={chord.chordName} size={36} weight={600} />
+                  <div
+                    className="font-mono font-medium leading-none text-[var(--text-2)]"
+                    style={{ fontSize: "18px", letterSpacing: "-0.01em" }}
+                  >
+                    {notesDisplay}
+                  </div>
+                </div>
+              </button>
+              <button
+                type="button"
                 aria-label={`Add ${chord.chordName} to progression`}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onAddChord(chord);
-                }}
+                onClick={() => onAddChord(chord)}
                 className="absolute right-3 top-3 flex h-[22px] w-[22px] items-center justify-center border-[0.5px] border-[var(--hair)] bg-[var(--surface)] font-mono text-[14px] leading-none text-[var(--text-2)] transition duration-[var(--t)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
                 style={{ borderRadius: "var(--radius)" }}
               >
                 +
               </button>
-              {/* TOP-LEFT STACK: roman + function as the abstract/theoretical
-                  side of the card — the chord's role in the key. */}
-              <div>
-                <div
-                  className="font-mono font-medium leading-none text-[var(--text)]"
-                  style={{ fontSize: "18px", letterSpacing: "-0.01em" }}
-                >
-                  {chord.romanNumeral}
-                </div>
-                <div className="mt-[6px] font-mono text-[10px] uppercase leading-none tracking-[0.12em] text-[var(--text-3)]">
-                  {degreeFunction}
-                </div>
-              </div>
-
-              {/* BOTTOM ROW: chord name (left) + tones (right) — the concrete
-                  musical content of the card. Baseline-aligned so the 18px
-                  tone row sits on the same baseline as the 36px hero. */}
-              <div className="mt-auto flex items-baseline justify-between gap-2">
-                <ChordDisplay chordName={chord.chordName} size={36} weight={600} />
-                <div
-                  className="font-mono font-medium leading-none text-[var(--text-2)]"
-                  style={{ fontSize: "18px", letterSpacing: "-0.01em" }}
-                >
-                  {notesDisplay}
-                </div>
-              </div>
             </div>
           );
         })}

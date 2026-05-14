@@ -1,6 +1,6 @@
 "use client";
 
-import { AUDIO_ARTS, type AudioArt } from "@/lib/audio/chord-audio";
+import { AUDIO_ARTS, clampTempo, MAX_TEMPO, MIN_TEMPO, type AudioArt } from "@/lib/audio/chord-audio";
 
 const AUDIO_ART_ABBREVIATIONS: Record<AudioArt, string> = {
   piano: "PIA",
@@ -66,10 +66,10 @@ export function AudioControls({
           className="h-7 w-[52px] border-[0.5px] border-[var(--hair)] bg-[var(--surface)] px-2 text-center font-mono text-[11px] uppercase tracking-[0.04em] text-[var(--text)] outline-none focus:border-[var(--text-2)]"
           style={{ borderRadius: "var(--radius)" }}
           type="number"
-          min="60"
-          max="180"
+          min={MIN_TEMPO}
+          max={MAX_TEMPO}
           value={tempo}
-          onChange={(event) => onTempoChange(Number(event.target.value))}
+          onChange={(event) => onTempoChange(clampTempo(Number(event.target.value)))}
         />
       </label>
 
