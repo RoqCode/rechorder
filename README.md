@@ -7,7 +7,7 @@ Saved takes are stored in the browser with IndexedDB. Use the library export act
 ## Setup
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 

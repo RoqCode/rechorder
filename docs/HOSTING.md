@@ -5,7 +5,7 @@ Rechorder is exported as a static site. There is no server runtime, database, au
 ## Build
 
 ```bash
-npm install
+npm ci
 npm run ci
 ```
 
@@ -17,7 +17,7 @@ Use these settings on static hosts such as Netlify, Cloudflare Pages, Vercel sta
 
 - Build command: `npm run build`
 - Output directory: `out`
-- Node version: 20 or newer
+- Node version: 20.9.0 or newer
 - Environment variables: none
 
 ## Requirements

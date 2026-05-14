@@ -119,6 +119,7 @@ export function Selectors({
                       ? `Set root to ${candidate}`
                       : "Unavailable in this mode"
                   }
+                  aria-pressed={isActive}
                   onClick={() => candidate && onTonicChange(candidate)}
                   className={`group relative flex w-[14px] cursor-pointer items-start bg-transparent p-0 ${
                     isSharp ? "h-[14px]" : "h-[26px]"

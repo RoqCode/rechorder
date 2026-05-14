@@ -156,12 +156,23 @@ async function putProgression(progression: SavedProgression) {
 function openDatabase() {
   if (!dbPromise) {
     dbPromise = new Promise((resolve, reject) => {
+      function rejectOpen(error: unknown) {
+        dbPromise = null;
+        reject(error);
+      }
+
       if (!globalThis.indexedDB) {
-        reject(new Error("IndexedDB is not available in this browser"));
+        rejectOpen(new Error("IndexedDB is not available in this browser"));
         return;
       }
 
-      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      let request: IDBOpenDBRequest;
+      try {
+        request = indexedDB.open(DB_NAME, DB_VERSION);
+      } catch (error) {
+        rejectOpen(error);
+        return;
+      }
 
       request.onupgradeneeded = () => {
         const db = request.result;
@@ -171,7 +182,7 @@ function openDatabase() {
         }
       };
 
-      request.onerror = () => reject(request.error);
+      request.onerror = () => rejectOpen(request.error);
       request.onsuccess = () => resolve(request.result);
     });
   }

@@ -90,6 +90,8 @@ export function AudioControls({
       </label>
 
       <div
+        role="group"
+        aria-label="Audio instrument"
         className="flex h-7 overflow-hidden border-[0.5px] border-[var(--hair)]"
         style={{ borderRadius: "var(--radius)" }}
       >
@@ -99,6 +101,7 @@ export function AudioControls({
             <button
               key={value}
               type="button"
+              aria-pressed={isSelected}
               onClick={() => onAudioArtChange(value)}
               className={`cursor-pointer px-3 font-mono text-[10px] uppercase leading-none tracking-[0.10em] transition duration-[var(--t)] ${
                 isSelected

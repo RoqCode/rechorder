@@ -93,7 +93,7 @@ Chips support:
 
 - Click to remove.
 - HTML5 drag-and-drop to reorder.
-- Keyboard shortcuts: `1`–`7` append the corresponding scale-degree chord, `Backspace` removes the last chord, `Esc` clears the current selection.
+- Keyboard shortcuts: `1`–`7` preview the corresponding scale-degree chord, `Backspace` removes the last chord, `Esc` clears the current selection.
 
 The primary interaction model is visual selection and keyboard, not free-text roman numeral input. Text input can be considered later.
 

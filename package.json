@@ -2,11 +2,14 @@
   "name": "rechorder",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "npx serve@latest out",
-    "preview": "npx serve@latest out",
+    "start": "npm exec --yes serve@14.2.4 -- out",
+    "preview": "npm exec --yes serve@14.2.4 -- out",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

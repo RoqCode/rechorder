@@ -18,7 +18,8 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Rechorder",
-  description: "A local harmony sketchpad for exploring chord progressions.",
+  description: "A harmony sketchpad for exploring chord progressions.",
+  icons: { icon: "/favicon.svg" },
 };
 
 export default function RootLayout({

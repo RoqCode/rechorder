@@ -32,20 +32,26 @@ export function useKeyboardShortcuts({
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target as HTMLElement | null;
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
       if (
         target &&
-        (target.tagName === "INPUT" || target.tagName === "TEXTAREA")
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
       )
         return;
 
       if (event.key >= "1" && event.key <= "7") {
         const index = Number(event.key) - 1;
         if (index < chords.length) {
+          event.preventDefault();
           previewChordRef.current(chords[index]);
         }
       } else if (event.key === "Backspace" && progressionLength > 0) {
+        event.preventDefault();
         removeLastChordRef.current();
       } else if (event.key === "Escape") {
+        event.preventDefault();
         clearFocusRef.current();
       }
     }

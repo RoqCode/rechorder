@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 
 import { formatNote, MODE_DESCRIPTORS } from "@/lib/music/chords";
 import type { SavedProgression } from "@/lib/progressions/progression-schema";
@@ -55,7 +55,56 @@ export function LibrarySidebar({
   onExport,
   onImport,
 }: LibrarySidebarProps) {
+  const sidebarRef = useRef<HTMLElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+  const [isMobileDrawer, setIsMobileDrawer] = useState(false);
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 639px)");
+    const updateIsMobileDrawer = () => setIsMobileDrawer(query.matches);
+
+    updateIsMobileDrawer();
+    query.addEventListener("change", updateIsMobileDrawer);
+    return () => query.removeEventListener("change", updateIsMobileDrawer);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && isMobileDrawer) {
+      previousFocusRef.current = document.activeElement as HTMLElement | null;
+      sidebarRef.current?.focus();
+    } else if (!isOpen) {
+      previousFocusRef.current?.focus();
+      previousFocusRef.current = null;
+    }
+  }, [isOpen, isMobileDrawer]);
+
+  function handleSidebarKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      onToggle();
+      return;
+    }
+
+    if (event.key !== "Tab" || !isMobileDrawer) return;
+
+    const candidates = sidebarRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    const focusable = Array.from(candidates ?? []).filter(isFocusable);
+    if (!focusable || focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   return (
     <>
@@ -68,6 +117,12 @@ export function LibrarySidebar({
         />
       ) : null}
       <aside
+        ref={sidebarRef}
+        role={isOpen && isMobileDrawer ? "dialog" : "complementary"}
+        aria-label="Progression library"
+        aria-modal={isOpen && isMobileDrawer ? true : undefined}
+        tabIndex={isOpen && isMobileDrawer ? -1 : undefined}
+        onKeyDown={isOpen ? handleSidebarKeyDown : undefined}
         className={`fixed z-40 border-[var(--rule)] bg-[var(--bg)] transition-[bottom,width] duration-[var(--t)] max-sm:left-3 max-sm:right-3 max-sm:border sm:bottom-0 sm:left-0 sm:top-0 sm:border-r ${
           isOpen ? "max-sm:bottom-3 max-sm:top-3" : "max-sm:bottom-3 max-sm:h-12"
         }`}
@@ -217,6 +272,10 @@ export function LibrarySidebar({
       </aside>
     </>
   );
+}
+
+function isFocusable(element: HTMLElement) {
+  return element.offsetParent !== null && element.tabIndex >= 0;
 }
 
 function CollapsedLabel({ count }: { count: number }) {

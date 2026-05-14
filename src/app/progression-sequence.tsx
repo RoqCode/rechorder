@@ -121,9 +121,9 @@ export function ProgressionSequence({
             const notesDisplay = getVoicedNotes(chord.notes, activeInversion).map(formatNote).join(" ");
 
             return (
-              <div
-                key={`${chord.degree}-${index}`}
-                draggable
+                <div
+                  key={`${chord.degree}-${index}`}
+                  draggable
                 onDragStart={(event) => {
                   setDragSource(index);
                   event.dataTransfer.effectAllowed = "move";
@@ -147,37 +147,52 @@ export function ProgressionSequence({
                   setDragSource(null);
                   setDropTarget(null);
                 }}
-                className={`group w-[calc(50%_-_5px)] cursor-grab transition duration-[var(--t)] sm:w-[126px] ${isDragging ? "opacity-40" : ""}`}
-              >
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => onFocusChord(index)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      onFocusChord(index);
-                    }
-                  }}
-                  className={`relative flex h-[104px] flex-col border-[0.5px] p-[10px] transition duration-[var(--t)] ${
-                    isPlaying
-                      ? "border-[var(--accent)] bg-[var(--accent-bg)]"
-                      : isActive
-                        ? "border-[var(--accent)] bg-[var(--accent-bg)]"
-                      : isDropTarget
-                        ? "border-[var(--accent)] bg-[var(--surface)]"
-                        : "border-[var(--hair)] bg-[var(--surface)] hover:border-[var(--text-2)]"
-                  }`}
-                  style={{ borderRadius: "var(--radius)" }}
+                  className={`group w-[calc(50%_-_5px)] cursor-grab transition duration-[var(--t)] sm:w-[126px] ${isDragging ? "opacity-40" : ""}`}
                 >
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => onFocusChord(index)}
+                    className={`relative flex h-[104px] w-full flex-col border-[0.5px] p-[10px] text-left transition duration-[var(--t)] ${
+                      isPlaying
+                        ? "border-[var(--accent)] bg-[var(--accent-bg)]"
+                        : isActive
+                          ? "border-[var(--accent)] bg-[var(--accent-bg)]"
+                        : isDropTarget
+                          ? "border-[var(--accent)] bg-[var(--surface)]"
+                          : "border-[var(--hair)] bg-[var(--surface)] hover:border-[var(--text-2)]"
+                    }`}
+                    style={{ borderRadius: "var(--radius)" }}
+                  >
+                    <div className="flex items-start justify-between gap-6 pr-6">
+                      <div>
+                        <div
+                          className="font-mono font-medium leading-none text-[var(--text)]"
+                          style={{ fontSize: "16px", letterSpacing: "-0.01em" }}
+                        >
+                          {chord.romanNumeral}
+                        </div>
+                        <div className="mt-[6px] font-mono text-[9px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
+                          {getInversionLabel(activeInversion)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-auto flex items-baseline justify-between gap-2">
+                      <ChordDisplay chordName={chord.chordName} size={26} weight={600} />
+                      <div
+                        className="font-mono font-medium leading-none text-[var(--text-2)]"
+                        style={{ fontSize: "12px", letterSpacing: "-0.01em" }}
+                      >
+                        {notesDisplay}
+                      </div>
+                    </div>
+                  </button>
                   <button
                     type="button"
                     aria-label={`Remove ${chord.chordName}`}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onRemove(index);
-                    }}
-                    className="absolute right-[8px] top-[7px] cursor-pointer font-mono text-[12px] leading-none text-[var(--text-3)] transition-opacity duration-[var(--t)] hover:text-[var(--text)] sm:text-[10px] sm:opacity-0 sm:group-hover:opacity-100"
+                    onClick={() => onRemove(index)}
+                    className="absolute right-[8px] top-[7px] cursor-pointer font-mono text-[12px] leading-none text-[var(--text-3)] transition-opacity duration-[var(--t)] hover:text-[var(--text)] sm:text-[10px] sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                   >
                     ✕
                   </button>
@@ -186,10 +201,7 @@ export function ProgressionSequence({
                       type="button"
                       aria-label={`Move ${chord.chordName} left`}
                       disabled={index === 0}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onReorder(index, index - 1);
-                      }}
+                      onClick={() => onReorder(index, index - 1)}
                       className="cursor-pointer font-mono text-[10px] leading-none text-[var(--text-3)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       ←
@@ -198,37 +210,11 @@ export function ProgressionSequence({
                       type="button"
                       aria-label={`Move ${chord.chordName} right`}
                       disabled={index === progression.length - 1}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        onReorder(index, index + 1);
-                      }}
+                      onClick={() => onReorder(index, index + 1)}
                       className="cursor-pointer font-mono text-[10px] leading-none text-[var(--text-3)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-30"
                     >
                       →
                     </button>
-                  </div>
-                  <div className="flex items-start justify-between gap-6 pr-6">
-                    <div>
-                      <div
-                        className="font-mono font-medium leading-none text-[var(--text)]"
-                        style={{ fontSize: "16px", letterSpacing: "-0.01em" }}
-                      >
-                        {chord.romanNumeral}
-                      </div>
-                      <div className="mt-[6px] font-mono text-[9px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
-                        {getInversionLabel(activeInversion)}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-auto flex items-baseline justify-between gap-2">
-                    <ChordDisplay chordName={chord.chordName} size={26} weight={600} />
-                    <div
-                      className="font-mono font-medium leading-none text-[var(--text-2)]"
-                      style={{ fontSize: "12px", letterSpacing: "-0.01em" }}
-                    >
-                      {notesDisplay}
-                    </div>
                   </div>
                 </div>
                 <div className="mt-[8px] text-center font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-3)]">
