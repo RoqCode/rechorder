@@ -94,8 +94,8 @@ export function Selectors({
       <div className="grid grid-cols-1 md:grid-cols-2">
         <div className="pr-0 md:border-r-[0.5px] md:border-[var(--hair)] md:pr-8">
           <PanelHead label="Root" index="01 / A" />
-          <div className="flex min-h-[60px] items-baseline">
-            <NoteDisplay note={tonic} size={HERO_SIZE} />
+          <div className="flex min-h-[52px] items-baseline sm:min-h-[60px]">
+            <NoteDisplay note={tonic} size={HERO_SIZE} className="scale-[0.86] origin-left sm:scale-100" />
           </div>
           <div className="mt-7 flex h-[26px] items-center gap-[6px]">
             {PITCH_CLASS_LAYOUT.map(({ pc, isSharp }) => {
@@ -150,15 +150,14 @@ export function Selectors({
 
         <div className="mt-6 border-t border-[var(--hair)] pt-6 md:mt-0 md:border-l-0 md:border-t-0 md:pl-8 md:pt-0">
           <PanelHead label="Mode" index="01 / B" />
-          <div className="flex min-h-[60px] items-baseline">
+          <div className="flex min-h-[52px] items-baseline sm:min-h-[60px]">
             <span
-              className="font-bold leading-[0.95]"
-              style={{ fontSize: `${HERO_SIZE}px`, letterSpacing: "-0.05em" }}
+              className="text-[54px] font-bold leading-[0.95] tracking-[-0.05em] sm:text-[64px]"
             >
               {descriptor.label}
             </span>
           </div>
-          <div className="mt-7 flex h-[26px] flex-wrap gap-[6px]">
+          <div className="mt-7 flex min-h-[26px] flex-wrap gap-[6px]">
             {MUSIC_MODES.map((id) => {
               const desc = MODE_DESCRIPTORS[id];
               const isActive = id === mode;

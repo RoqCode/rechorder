@@ -46,9 +46,10 @@ export function ChordGrid({
       title="Diatonic Chords"
       readout={readout}
       isCollapsed={isCollapsed}
+      hideActionsWhenCollapsed
       onToggle={onToggleCollapse}
       actions={
-        <div className="flex gap-[6px]">
+        <div className="flex flex-wrap gap-[6px]">
           {CHORD_TYPES.map((type) => {
             const isActive = type === chordType;
             return (
@@ -71,7 +72,7 @@ export function ChordGrid({
         </div>
       }
     >
-      <div className="grid grid-cols-3 gap-[14px] sm:grid-cols-4 md:grid-cols-7">
+      <div className="grid grid-cols-2 gap-[10px] sm:grid-cols-4 sm:gap-[14px] min-[880px]:grid-cols-5 xl:grid-cols-7">
         {chords.map((chord) => {
           const isSelected = selectedDegree === chord.degree;
           const isDominant = chord.romanNumeral === "V" || chord.romanNumeral === "V7";
@@ -81,7 +82,7 @@ export function ChordGrid({
           return (
             <div
               key={`${chord.degree}-${chord.romanNumeral}`}
-              className={`group relative aspect-square min-h-[140px] ${
+              className={`group relative min-h-[124px] sm:aspect-square sm:min-h-[140px] ${
                 isSelected
                   ? "border-[0.5px] border-[var(--accent)] bg-[var(--accent-bg)]"
                   : isDominant
@@ -123,7 +124,7 @@ export function ChordGrid({
                 type="button"
                 aria-label={`Add ${chord.chordName} to progression`}
                 onClick={() => onAddChord(chord)}
-                className="absolute right-3 top-3 flex h-[22px] w-[22px] items-center justify-center border-[0.5px] border-[var(--hair)] bg-[var(--surface)] font-mono text-[14px] leading-none text-[var(--text-2)] transition duration-[var(--t)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+                className="absolute right-2 top-2 flex h-[30px] w-[30px] items-center justify-center border-[0.5px] border-[var(--hair)] bg-[var(--surface)] font-mono text-[16px] leading-none text-[var(--text-2)] transition duration-[var(--t)] hover:border-[var(--accent)] hover:text-[var(--accent)] sm:right-3 sm:top-3 sm:h-[22px] sm:w-[22px] sm:text-[14px]"
                 style={{ borderRadius: "var(--radius)" }}
               >
                 +

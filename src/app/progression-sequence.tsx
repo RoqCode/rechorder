@@ -67,7 +67,9 @@ export function ProgressionSequence({
             type="button"
             onClick={onTogglePlayback}
             disabled={progression.length === 0}
-            className="cursor-pointer text-[var(--text-2)] transition-colors duration-[var(--t)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:text-[var(--text-3)] disabled:opacity-50"
+            className={`cursor-pointer transition-colors duration-[var(--t)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:text-[var(--text-3)] disabled:opacity-50 ${
+              isPlaying ? "text-[var(--accent)]" : "text-[var(--text-2)]"
+            }`}
           >
             {isPlaying ? "■ Stop" : "▶ Play"}
           </button>
@@ -102,7 +104,7 @@ export function ProgressionSequence({
       }
     >
       <div
-        className="flex min-h-[132px] flex-wrap items-stretch gap-[14px] bg-[var(--inset)] p-5"
+        className="flex min-h-[132px] flex-wrap items-stretch gap-[10px] bg-[var(--inset)] p-3 sm:gap-[14px] sm:p-5"
         style={{ borderRadius: "var(--radius)" }}
       >
         {progression.length === 0 ? (
@@ -145,7 +147,7 @@ export function ProgressionSequence({
                   setDragSource(null);
                   setDropTarget(null);
                 }}
-                className={`group w-[126px] cursor-grab transition duration-[var(--t)] ${isDragging ? "opacity-40" : ""}`}
+                className={`group w-[calc(50%_-_5px)] cursor-grab transition duration-[var(--t)] sm:w-[126px] ${isDragging ? "opacity-40" : ""}`}
               >
                 <div
                   role="button"
@@ -175,11 +177,11 @@ export function ProgressionSequence({
                       event.stopPropagation();
                       onRemove(index);
                     }}
-                    className="absolute right-[8px] top-[7px] cursor-pointer font-mono text-[10px] leading-none text-[var(--text-3)] opacity-0 transition-opacity duration-[var(--t)] hover:text-[var(--text)] group-hover:opacity-100"
+                    className="absolute right-[8px] top-[7px] cursor-pointer font-mono text-[12px] leading-none text-[var(--text-3)] transition-opacity duration-[var(--t)] hover:text-[var(--text)] sm:text-[10px] sm:opacity-0 sm:group-hover:opacity-100"
                   >
                     ✕
                   </button>
-                  <div className="absolute right-[8px] top-[26px] flex gap-1 opacity-0 transition-opacity duration-[var(--t)] group-hover:opacity-100 group-focus-within:opacity-100">
+                  <div className="absolute right-[8px] top-[28px] flex gap-2 transition-opacity duration-[var(--t)] sm:top-[26px] sm:gap-1 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
                     <button
                       type="button"
                       aria-label={`Move ${chord.chordName} left`}

@@ -50,16 +50,29 @@ export function LibrarySidebar({
   onDelete,
 }: LibrarySidebarProps) {
   return (
-    <aside
-      className="fixed bottom-0 left-0 top-0 z-40 border-r border-[var(--rule)] bg-[var(--bg)] transition-[width] duration-[var(--t)]"
-      style={{ width: isOpen ? "min(340px, 100vw)" : "32px" }}
-    >
+    <>
+      {isOpen ? (
+        <button
+          type="button"
+          aria-label="Close library"
+          onClick={onToggle}
+          className="fixed inset-0 z-30 bg-[rgba(0,0,0,0.22)] sm:hidden"
+        />
+      ) : null}
+      <aside
+        className={`fixed z-40 border-[var(--rule)] bg-[var(--bg)] transition-[bottom,width] duration-[var(--t)] max-sm:left-3 max-sm:right-3 max-sm:border sm:bottom-0 sm:left-0 sm:top-0 sm:border-r ${
+          isOpen ? "max-sm:bottom-3 max-sm:top-3" : "max-sm:bottom-3 max-sm:h-12"
+        }`}
+        style={{ width: isOpen ? "min(340px, calc(100vw - 24px))" : "32px" }}
+      >
       <button
         type="button"
         onClick={onToggle}
         aria-expanded={isOpen}
         aria-label={isOpen ? "Collapse library" : "Expand library"}
-        className="absolute left-0 top-0 z-10 flex h-full w-[32px] cursor-pointer items-start justify-center pt-7 transition-colors duration-[var(--t)] hover:bg-[var(--inset)]"
+        className={`absolute left-0 top-0 z-10 flex w-[32px] cursor-pointer items-start justify-center transition-colors duration-[var(--t)] hover:bg-[var(--inset)] ${
+          isOpen ? "h-full pt-7" : "h-12 pt-3 sm:h-full sm:pt-7"
+        }`}
       >
         {isOpen ? (
           <span className="font-mono text-[14px] leading-none text-[var(--text-3)]">◂</span>
@@ -71,7 +84,7 @@ export function LibrarySidebar({
       {isOpen ? (
         <div
           className="ml-[32px] flex h-full flex-col gap-6 overflow-y-auto px-5 pb-10 pt-7"
-          style={{ width: "calc(min(340px, 100vw) - 32px)" }}
+          style={{ width: "calc(min(340px, calc(100vw - 24px)) - 32px)" }}
         >
           {/* HEAD */}
           <div className="flex items-baseline justify-between">
@@ -152,18 +165,22 @@ export function LibrarySidebar({
           </div>
         </div>
       ) : null}
-    </aside>
+      </aside>
+    </>
   );
 }
 
 function CollapsedLabel({ count }: { count: number }) {
   return (
-    <span
-      className="origin-center whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-3)]"
-      style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
-    >
-      Library · {count} {count === 1 ? "Take" : "Takes"}
-    </span>
+    <>
+      <span
+        className="origin-center whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--text-3)] max-sm:hidden"
+        style={{ writingMode: "vertical-rl", transform: "rotate(180deg)" }}
+      >
+        Library · {count} {count === 1 ? "Take" : "Takes"}
+      </span>
+      <span className="font-mono text-[13px] leading-none text-[var(--text-3)] sm:hidden">▸</span>
+    </>
   );
 }
 

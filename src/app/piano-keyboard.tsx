@@ -42,14 +42,15 @@ export function PianoKeyboard({
 
   return (
     <div
-      className="relative mx-auto h-[160px] w-full select-none"
+      className="overflow-x-auto pb-2"
       aria-label={activeNotes.length ? `Piano keys for ${activeNotes.join(" ")}` : "Empty keyboard"}
     >
-      <div
-        className="grid h-full"
-        style={{ gridTemplateColumns: `repeat(${WHITE_KEYS.length}, minmax(0, 1fr))` }}
-      >
-        {WHITE_KEYS.map((note) => {
+      <div className="relative mx-auto h-[132px] min-w-[720px] select-none sm:h-[160px] sm:min-w-0">
+        <div
+          className="grid h-full"
+          style={{ gridTemplateColumns: `repeat(${WHITE_KEYS.length}, minmax(0, 1fr))` }}
+        >
+          {WHITE_KEYS.map((note) => {
           const isActive = activeKeyIds.has(note);
           const isAlternate = alternateKeyIds.has(note) && !isActive;
           const isRoot = note === rootKeyId;
@@ -85,10 +86,10 @@ export function PianoKeyboard({
               ) : null}
             </div>
           );
-        })}
-      </div>
+          })}
+        </div>
 
-      {BLACK_KEYS.map(({ note, leftWhiteKey }) => {
+        {BLACK_KEYS.map(({ note, leftWhiteKey }) => {
         const isActive = activeKeyIds.has(note);
         const isAlternate = alternateKeyIds.has(note) && !isActive;
         const isRoot = note === rootKeyId;
@@ -116,7 +117,8 @@ export function PianoKeyboard({
             ) : null}
           </div>
         );
-      })}
+        })}
+      </div>
     </div>
   );
 }
