@@ -53,6 +53,14 @@ export function getKeyRelativeRootPositionKeyIds(activeNotes: string[], rootFloo
   return new Set(getRootPositionCandidate(activeNotes, rootFloorKey) ?? []);
 }
 
+export function getVisibleChordToneKeyIds(activeNotes: string[]) {
+  const activePitchClasses = new Set(activeNotes.map(getPitchClass));
+
+  return new Set(
+    KEYBOARD_KEYS.filter((key) => activePitchClasses.has(getPitchClass(stripOctave(key)))),
+  );
+}
+
 export function getCenteredRootFloorKey(rootFloorNote: string, chordNoteSets: string[][]) {
   const candidates = KEYBOARD_KEYS.filter((key) => getPitchClass(stripOctave(key)) === getPitchClass(rootFloorNote))
     .filter((rootFloorKey) => chordNoteSets.every((notes) => getRootPositionCandidate(notes, rootFloorKey) !== null))

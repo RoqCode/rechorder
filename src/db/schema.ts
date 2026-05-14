@@ -1,6 +1,14 @@
 import { jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-export const modeEnum = pgEnum("mode", ["major", "natural_minor"]);
+export const modeEnum = pgEnum("mode", [
+  "ionian",
+  "dorian",
+  "phrygian",
+  "lydian",
+  "mixolydian",
+  "aeolian",
+  "locrian",
+]);
 export const chordTypeEnum = pgEnum("chord_type", ["triads", "sevenths"]);
 
 export type ProgressionChord = {

@@ -8,6 +8,13 @@
       "when": 1778503070010,
       "tag": "0000_purple_psylocke",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778709661964,
+      "tag": "0001_expand_mode_enum",
+      "breakpoints": true
     }
   ]
 }

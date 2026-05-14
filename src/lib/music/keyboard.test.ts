@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getCenteredRootFloorKey, getKeyRelativeRootPositionKeyIds } from "./keyboard";
+import { getCenteredRootFloorKey, getKeyRelativeRootPositionKeyIds, getVisibleChordToneKeyIds } from "./keyboard";
 
 describe("getCenteredRootFloorKey", () => {
   it("chooses C3 for C major triads so all degrees move upward", () => {
@@ -47,5 +47,26 @@ describe("getCenteredRootFloorKey", () => {
 
     expect(rootFloorKey).toBe("G#2");
     expect([...getKeyRelativeRootPositionKeyIds(["Eb", "G", "Bb", "Db"], rootFloorKey)]).toEqual(["D#3", "G3", "A#3", "C#4"]);
+  });
+});
+
+describe("getVisibleChordToneKeyIds", () => {
+  it("returns every visible octave for chord tones", () => {
+    expect([...getVisibleChordToneKeyIds(["C", "E", "G"])]).toEqual([
+      "C2",
+      "E2",
+      "G2",
+      "C3",
+      "E3",
+      "G3",
+      "C4",
+      "E4",
+      "G4",
+      "C5",
+    ]);
+  });
+
+  it("matches enharmonic chord tones to their visible piano keys", () => {
+    expect([...getVisibleChordToneKeyIds(["Bb", "D", "F"])]).toContain("A#3");
   });
 });

@@ -14,19 +14,19 @@ The primary goal is fast, low-friction exploration. Learning happens passively t
 
 ## Goals
 
-- Let users explore chords within a selected key.
+- Let users explore chords within a selected key and mode.
 - Show each chord as roman numeral, chord name, note names, and piano keys.
+- Let users audition individual chords and play back full progressions.
 - Let users build a chord progression from available chords.
 - Let users save and revisit progressions in a local library.
 - Keep the interface minimal, tactile, and visually calm.
 
 ## Non-Goals
 
-- No audio playback in the MVP.
 - No account system or user management.
 - No cloud sync.
 - No full music theory curriculum.
-- No advanced harmony features such as borrowed chords, modes, secondary dominants, or modulation.
+- No borrowed chords, secondary dominants, or modulation across keys.
 - No MIDI input/output in the MVP.
 
 ## Target User
@@ -38,90 +38,102 @@ The user knows little music theory, prefers English note names, and wants an app
 ## Core User Flow
 
 1. The user opens Rechorder in a browser on the local network.
-2. The user selects a key and mode, for example `C major` or `A natural minor`.
-3. The app displays the diatonic chords for that key.
+2. The user selects a root and a mode, for example `C Ionian` or `D Dorian`.
+3. The app displays the diatonic chords for that root + mode.
 4. The user toggles between triads and seventh chords.
-5. The user inspects chords through roman numerals, chord names, note names, and highlighted piano keys.
-6. The user clicks or drags chords into a progression sequence.
-7. The user names the progression and saves it.
-8. The user can reopen saved progressions from a simple library list.
+5. The user clicks a chord to preview it (audio + highlighted piano keys) and add it to the progression.
+6. The user reorders or removes chords inside the progression via drag-and-drop or click-to-remove.
+7. The user plays back the full progression, optionally looped, at a chosen tempo and instrument timbre.
+8. The user opens the library sidebar, names the progression, and saves it.
+9. The user can reopen, update, or delete saved progressions from the sidebar.
 
 ## MVP Scope
 
 ### Key Selection
 
-Users can select a key from supported major and natural minor keys.
+The user picks a key by combining a root (pitch class) and a mode.
+
+Supported modes are the seven diatonic modes: `ionian`, `dorian`, `phrygian`, `lydian`, `mixolydian`, `aeolian`, `locrian`. `ionian` is the conventional major, `aeolian` is the conventional natural minor; the others give the user direct access to modal harmony without leaving the diatonic system.
+
+Roots are selectable via a 12-marker pitch-class strip. The marker resolves to the most idiomatic spelling for the active mode — for example clicking the marker between `C` and `D` yields `C#` in `lydian` and `Db` in `phrygian`. Spellings that would force double sharps or double flats in the scale are not offered as roots for that mode.
 
 The app uses English note names only, for example `C`, `C#`, `Db`, `Fb`, and `Bb`. German note naming is not used.
 
-Enharmonic spelling should follow the selected key where feasible. For example, a key that correctly contains `Cb` should not silently display that note as `B`.
+Enharmonic spelling follows the selected key. A key that correctly contains `Cb` is not silently displayed as `B`. Accidentals and chord qualities are rendered with proper glyphs (`♯`, `♭`, `°`) in the UI, while the underlying data uses ASCII (`#`, `b`, `dim`) for storage stability.
 
 ### Chord Browser
 
-For the selected key, the app shows diatonic chords.
+For the selected key and mode, the app shows the seven diatonic chords as a horizontal grid of identical tiles. Each tile shows:
 
-For major keys, the triad qualities are:
+- Step number (`01`–`07`) in the top-left corner.
+- Roman numeral in the top-right corner, with mode-specific accidentals (e.g. `♭III` in dorian, `♯iv°` in lydian).
+- Chord name as the visual hero, with the root letter dominant and the quality suffix rendered smaller.
 
-- `I` major
-- `ii` minor
-- `iii` minor
-- `IV` major
-- `V` major
-- `vi` minor
-- `vii°` diminished
+Clicking a tile both previews the chord (audio + keyboard highlight) and appends it to the progression. The dominant chord (`V` in major-flavored modes) carries a default accent border as a subtle harmonic cue.
 
-For natural minor keys, the triad qualities are:
-
-- `i` minor
-- `ii°` diminished
-- `III` major
-- `iv` minor
-- `v` minor
-- `VI` major
-- `VII` major
-
-Users can toggle seventh chords. Seventh chords are an alternate display mode, not a separate progression system in the MVP.
-
-Each chord card displays:
-
-- Roman numeral, for example `IV`.
-- Chord name, for example `F major` or `Fmaj7`.
-- Note names, for example `F A C`.
-- Piano visualization.
+The user can toggle between triads and seventh chords. Seventh chords are an alternate display mode, not a separate progression system in the MVP. Seventh roman numerals are derived from the triad roman plus the chord quality (for example `V7`, `iiø7`, `Imaj7`).
 
 ### Piano Visualization
 
-The piano visualization uses a stable keyboard range for the selected key instead of starting each chord view at the chord root.
+The piano is rendered as a schematic two-octave keyboard. The visible range is chosen once per selected key and chord type so that every diatonic chord in that key fits inside the keyboard with the same downward-to-upward ordering. The placement does not shift between individual chords inside the same key, making chord shapes easy to compare.
 
-The app may choose a centered octave placement per selected key and chord type so all diatonic chords fit comfortably inside the visible keyboard. Once selected, that placement remains stable while browsing chords in the same key and chord type.
+Chord tones are highlighted with the functional accent color:
 
-This makes chord shapes easier to compare because the keyboard does not shift between individual chords, while still keeping edge-case keys and seventh chords readable.
+- White keys fill from the bottom upward to roughly 55% of their height.
+- Black keys fill from the bottom upward to roughly 50% of their height.
+- The root of the chord fills fully and carries a small `R` marker, so the harmonic anchor is always visible at a glance.
 
-Chord tones are highlighted on the keyboard. In the MVP, one octave placement is enough per chord tone, but the keyboard itself should span enough range for chords near octave boundaries to remain visually stable.
+The keyboard is intentionally flat and schematic — no perspective, no shadows, no skeumorphic textures — so it reads as a readout rather than a decorative illustration.
 
 ### Progression Builder
 
-Users build a progression by clicking or dragging chords from the chord browser into a sequence area.
+Clicking a chord tile appends it to the progression. Inside the progression area, each chord renders as a chip showing its step number, chord name, and roman numeral.
 
-The progression displays both:
+Chips support:
 
-- Roman numeral sequence, for example `I - V - vi - IV`.
-- Concrete chord sequence in the selected key, for example `C - G - Am - F`.
+- Click to remove.
+- HTML5 drag-and-drop to reorder.
+- Keyboard shortcuts: `1`–`7` append the corresponding scale-degree chord, `Backspace` removes the last chord, `Esc` clears the current selection.
 
-The primary interaction model is visual selection, not free-text roman numeral input. Text input can be considered later.
+The primary interaction model is visual selection and keyboard, not free-text roman numeral input. Text input can be considered later.
 
-Progressions are bound to the selected key. A saved progression in `C major` is treated as a `C major` progression, not as a generic transposable template.
+Progressions are bound to the selected root and mode. A saved progression in `C Ionian` is treated as a `C Ionian` progression, not as a generic transposable template.
+
+### Audio Playback
+
+Users can audition both individual chords and full progressions through the browser's Web Audio API. No external audio assets are required.
+
+Audio controls live in the page footer and expose:
+
+- Sound on / mute toggle (the app starts muted so users are not surprised by sound on first load).
+- Volume slider.
+- Tempo input in BPM (range 60–180).
+- Instrument timbre (`PIA` piano, `PAD` pad, `ARP` arpeggio, `STR` strings).
+
+Footer transport buttons control progression playback:
+
+- `▶ Play` / `■ Stop` toggles playback.
+- `↻ Loop` keeps the progression cycling until stopped.
+- `Clear progression` empties the current sequence.
+- `Copy as text` writes a plain-text summary (key, chord names, roman numerals) to the clipboard.
+
+While a progression is playing, the currently sounding chord is highlighted in the chip strip, in the chord grid, and on the piano keyboard.
 
 ### Progression Library
 
-Users can save progressions to a central local database.
+Users can save progressions to a central local database. The library lives in a collapsible right-edge sidebar — by default it stays tucked away as a thin vertical strip so it never crowds the sketchpad, and slides open when the user wants to save, load, or browse takes.
+
+The sidebar contains:
+
+- A save form (take name, optional notes, Save/Update + New buttons).
+- A list of saved takes, each showing key + mode + chord type, name, a compact roman-numeral summary, optional notes preview, and Load / Delete actions.
 
 Saved progressions contain:
 
 - Name
-- Key tonic
-- Mode, either `major` or `natural_minor`
-- Chord type mode, either `triads` or `sevenths`
+- Root tonic
+- Mode (one of the seven diatonic modes)
+- Chord type, either `triads` or `sevenths`
 - Ordered chord sequence
 - Optional notes
 - Created timestamp
@@ -131,28 +143,51 @@ The library is a simple list in the MVP. Tags, favorites, search, filtering, and
 
 ## Visual Direction
 
-The design should feel like a clean musical tool rather than a content-heavy learning app.
+The app is composed like an editorial page about a single piece of musical equipment — not styled like a SaaS dashboard. It reads as a confident piece of technical equipment, with Swiss-poster precision: quiet but not shy.
 
 Reference direction:
 
-- Dieter Rams-style restraint
-- Teenage Engineering-like instrument minimalism
-- Warm off-white or light gray base
-- High-contrast black typography
-- Sparse accent color for selected states and active notes
-- Strong grid alignment
-- Tactile controls
-- Progression builder inspired by recorder, sequencer, or hardware slots
+- Dieter Rams / Braun-era industrial restraint (e.g. ET66 calculator, Regie 308).
+- Teenage Engineering instrument minimalism (TP-7, OP-1) — flat schematic controls, fine technical labels, functional color coding.
+- Swiss typographic tradition (Müller-Brockmann, Hofmann) — active whitespace, asymmetric composition, dramatic scale contrast.
 
-Potential product language:
+Typographic philosophy (the design's primary visual carrier):
 
-- `record`
-- `take`
-- `sequence`
-- `slot`
-- `library`
+- **Dramatic scale contrast.** Every zone has a single hero element rendered at display size (48–80px) and supporting elements rendered tiny (10–12px). Nothing lives in the middle.
+- **Asymmetric composition.** Within each zone, content aligns left and lets whitespace breathe to the right. The composition is weighted to one side, never centered.
+- **Information as display.** Each piece of data is rendered as if it were a readout on a hardware panel rather than decoration on a layout.
 
-The UI should be desktop-first but responsive enough to use on smaller screens.
+Layout is a top-to-bottom flow through four numbered zones, each separated by a 1px `#1A1A1A` rule:
+
+1. **Selectors** — root and mode, each as a hero glyph plus its selector strip.
+2. **Diatonic chords** — seven equal tiles.
+3. **Keyboard** — a two-octave schematic piano with accent fills.
+4. **Progression** — an inset chip strip.
+
+A collapsible library sidebar lives at the right edge. Above the four zones is a top bar with the wordmark and meta readouts (version, tuning, current key). Below them is a footer with the audio controls and the transport actions.
+
+Palette (pure neutral grayscale plus a single functional accent — no warm tones, no gradients, no drop shadows, no glassmorphism):
+
+- Background `#F5F5F5`
+- Surface `#FFFFFF`
+- Inset surface (progression bed) `#E8E8E8`
+- Deep surface (black keys) `#1A1A1A`
+- Primary text `#0A0A0A`, secondary `#5C5C5C`, tertiary `#9A9A9A`
+- Hairlines `#D4D4D4` at 0.5px; zone rules `#1A1A1A` at 1px
+- Functional accent `#FF6A1F` with muted background `#FFEFE6`
+
+Type pairing:
+
+- Primary sans-serif: Inter (400, 500, 600).
+- Monospace for readouts and labels: JetBrains Mono.
+
+Product language:
+
+- `take` (a saved progression)
+- `sequence` (the live progression being built)
+- `library` (the sidebar holding all takes)
+
+The UI is desktop-first but responsive down to phone widths.
 
 ## Technical Direction
 
@@ -183,7 +218,14 @@ type Progression = {
   id: string
   name: string
   tonic: string
-  mode: 'major' | 'natural_minor'
+  mode:
+    | 'ionian'
+    | 'dorian'
+    | 'phrygian'
+    | 'lydian'
+    | 'mixolydian'
+    | 'aeolian'
+    | 'locrian'
   chordType: 'triads' | 'sevenths'
   chords: ProgressionChord[]
   notes: string | null
@@ -191,6 +233,8 @@ type Progression = {
   updatedAt: string
 }
 ```
+
+Legacy progressions stored under the previous two-mode model are migrated automatically: `major → ionian`, `natural_minor → aeolian`. The migration lives in `drizzle/0001_expand_mode_enum.sql`.
 
 ### ProgressionChord
 
@@ -214,13 +258,13 @@ The stored chord sequence may duplicate derived data such as `chordName` and `no
 
 ## Future Ideas
 
-- Audio playback for individual chords and full progressions.
 - Inversions and voicings.
 - MIDI input or output.
 - Progression tags and favorites.
 - Search and filtering in the library.
-- Transpose saved progressions into other keys.
-- Borrowed chords and modal mixture.
+- Transpose saved progressions into other keys (or modes).
+- Borrowed chords and modal mixture across modes.
 - Secondary dominants.
-- Modes beyond major and natural minor.
+- Additional non-diatonic scales (harmonic minor, melodic minor, bebop, blues).
+- Per-take instrument timbre stored with the progression.
 - Lightweight explanations for common harmonic movements.
