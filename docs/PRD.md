@@ -18,7 +18,7 @@ The primary goal is fast, low-friction exploration. Learning happens passively t
 - Show each chord as roman numeral, chord name, note names, and piano keys.
 - Let users audition individual chords and play back full progressions.
 - Let users build a chord progression from available chords.
-- Let users save and revisit progressions in a local library.
+- Let users save and revisit progressions in a browser-local library.
 - Keep the interface minimal, tactile, and visually calm.
 
 ## Non-Goals
@@ -121,7 +121,7 @@ While a progression is playing, the currently sounding chord is highlighted in t
 
 ### Progression Library
 
-Users can save progressions to a central local database. The library lives in a collapsible right-edge sidebar — by default it stays tucked away as a thin vertical strip so it never crowds the sketchpad, and slides open when the user wants to save, load, or browse takes.
+Users can save progressions to browser-local storage. The library lives in a collapsible right-edge sidebar — by default it stays tucked away as a thin vertical strip so it never crowds the sketchpad, and slides open when the user wants to save, load, import, export, or browse takes.
 
 The sidebar contains:
 
@@ -194,20 +194,19 @@ The UI is desktop-first but responsive down to phone widths.
 ### Stack
 
 - Framework: Next.js
-- Database: PostgreSQL
-- ORM: Drizzle
-- Deployment target: local network hosting
-- Runtime packaging: Docker Compose for app and database
+- Persistence: IndexedDB
+- Deployment target: public static-capable hosting or local development
+- Runtime packaging: Next.js production build
 
-PostgreSQL is preferred over SQLite because the app is intended to be used from multiple devices on the local network. A server-side database avoids browser-local data silos and handles concurrent access more predictably.
+IndexedDB keeps Rechorder publishable without accounts, auth, database hosting, or server-side mutation endpoints. Saved takes are local to the current browser/profile. JSON import/export is the backup and manual sync mechanism.
 
 ### Architecture
 
-The app should use a server-backed persistence model.
+The app should use a browser-local persistence model.
 
-The browser is only the client. Saved progressions live in the central database, so multiple devices can access the same library.
+Saved progressions live in IndexedDB. Multiple devices do not share a live library automatically; users move takes through export/import.
 
-The first version does not need authentication if it is hosted only inside a trusted local network.
+The first public version does not need authentication because there are no shared server-side user mutations.
 
 ## Data Model Draft
 
@@ -234,7 +233,7 @@ type Progression = {
 }
 ```
 
-Legacy progressions stored under the previous two-mode model are migrated automatically: `major → ionian`, `natural_minor → aeolian`. The migration lives in `drizzle/0001_expand_mode_enum.sql`.
+Legacy progressions stored under the previous two-mode model are not part of the IndexedDB MVP migration path.
 
 ### ProgressionChord
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { getDiatonicChords } from "../lib/music/chords";
-import { validateProgressionInput } from "./progression-validation";
+import { validateProgressionInput } from "../lib/progressions/progression-schema";
 
 const validChords = getDiatonicChords({ tonic: "C", mode: "ionian", chordType: "triads" }).map((chord) => ({
   ...chord,

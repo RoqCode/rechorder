@@ -1,8 +1,10 @@
 "use client";
 
+import { useRef } from "react";
+
 import { formatNote, MODE_DESCRIPTORS } from "@/lib/music/chords";
+import type { SavedProgression } from "@/lib/progressions/progression-schema";
 import { CHORD_TYPE_LABELS } from "./chord-type-labels";
-import type { SavedProgression } from "./progression-actions";
 
 type LibrarySidebarProps = {
   library: SavedProgression[];
@@ -27,6 +29,8 @@ type LibrarySidebarProps = {
   onRequestDelete: (id: string) => void;
   onCancelDelete: () => void;
   onDelete: (id: string) => void;
+  onExport: () => void;
+  onImport: (file: File) => void;
 };
 
 export function LibrarySidebar({
@@ -48,7 +52,11 @@ export function LibrarySidebar({
   onRequestDelete,
   onCancelDelete,
   onDelete,
+  onExport,
+  onImport,
 }: LibrarySidebarProps) {
+  const importInputRef = useRef<HTMLInputElement | null>(null);
+
   return (
     <>
       {isOpen ? (
@@ -139,6 +147,47 @@ export function LibrarySidebar({
                 {statusMessage}
               </p>
             ) : null}
+          </div>
+
+          {/* PORTABILITY */}
+          <div className="grid gap-2 border-b border-[var(--hair)] pb-6">
+            <div className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
+              Portability
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={library.length === 0 || isPending}
+                onClick={onExport}
+                className="h-8 cursor-pointer border-[0.5px] border-[var(--hair)] bg-transparent px-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-2)] transition duration-[var(--t)] hover:border-[var(--text)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:text-[var(--text-3)]"
+                style={{ borderRadius: "var(--radius)" }}
+              >
+                Export
+              </button>
+              <button
+                type="button"
+                disabled={isPending}
+                onClick={() => importInputRef.current?.click()}
+                className="h-8 cursor-pointer border-[0.5px] border-[var(--hair)] bg-transparent px-2 font-mono text-[10px] uppercase tracking-[0.12em] text-[var(--text-2)] transition duration-[var(--t)] hover:border-[var(--text)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:text-[var(--text-3)]"
+                style={{ borderRadius: "var(--radius)" }}
+              >
+                Import
+              </button>
+            </div>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept="application/json,.json"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) onImport(file);
+                event.currentTarget.value = "";
+              }}
+            />
+            <p className="font-mono text-[10px] leading-[1.45] tracking-[0.02em] text-[var(--text-3)]">
+              Local browser data. Export JSON for backup or manual sync.
+            </p>
           </div>
 
           {/* LIST */}
