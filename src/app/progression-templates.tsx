@@ -1,28 +1,23 @@
 "use client";
 
 import { PROGRESSION_TEMPLATES, type ProgressionTemplate } from "@/lib/music/progression-templates";
+import { CollapsibleSection } from "./collapsible-section";
 
 type ProgressionTemplatesProps = {
+  isCollapsed: boolean;
   onApplyTemplate: (template: ProgressionTemplate) => void;
+  onToggleCollapse: () => void;
 };
 
-export function ProgressionTemplates({ onApplyTemplate }: ProgressionTemplatesProps) {
+export function ProgressionTemplates({ isCollapsed, onApplyTemplate, onToggleCollapse }: ProgressionTemplatesProps) {
   return (
-    <section className="border-b border-[var(--rule)] py-9">
-      <header className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
-        <div className="flex items-baseline gap-[10px]">
-          <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-2)]">
-            03
-          </span>
-          <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
-            Templates
-          </span>
-          <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
-            Replace current progression
-          </span>
-        </div>
-      </header>
-
+    <CollapsibleSection
+      index="03"
+      title="Templates"
+      readout="Replace current progression"
+      isCollapsed={isCollapsed}
+      onToggle={onToggleCollapse}
+    >
       <div className="grid grid-cols-1 gap-[10px] sm:grid-cols-2 lg:grid-cols-5">
         {PROGRESSION_TEMPLATES.map((template) => (
           <button
@@ -44,6 +39,6 @@ export function ProgressionTemplates({ onApplyTemplate }: ProgressionTemplatesPr
           </button>
         ))}
       </div>
-    </section>
+    </CollapsibleSection>
   );
 }

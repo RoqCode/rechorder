@@ -20,6 +20,7 @@ import { applyProgressionTemplate, type ProgressionTemplate } from "@/lib/music/
 
 import { AudioControls } from "./audio-controls";
 import { ChordGrid } from "./chord-grid";
+import { CollapsibleSection } from "./collapsible-section";
 import { LibrarySidebar } from "./library-sidebar";
 import { PianoKeyboard } from "./piano-keyboard";
 import { type SavedProgression } from "./progression-actions";
@@ -30,6 +31,7 @@ import { useProgressionLibrary } from "./use-progression-library";
 import { useProgressionPlayback } from "./use-progression-playback";
 
 type KeyboardDisplayMode = "scale" | "chord";
+type SectionId = "selectors" | "chords" | "templates" | "keyboard" | "progression";
 
 export function ChordExplorer() {
   const [mode, setMode] = useState<MusicMode>("ionian");
@@ -48,6 +50,7 @@ export function ChordExplorer() {
   const [tempo, setTempo] = useState(100);
   const [audioArt, setAudioArt] = useState<AudioArt>("piano");
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState<Set<SectionId>>(new Set());
   const [copyMessage, setCopyMessage] = useState("");
   const previewChordRef = useRef<(chord: DiatonicChord) => void>(() => {});
   const removeChordRef = useRef<(index: number) => void>(() => {});
@@ -178,6 +181,18 @@ export function ChordExplorer() {
   function handleAudioArtChange(nextAudioArt: AudioArt) {
     stopPlayback();
     setAudioArt(nextAudioArt);
+  }
+
+  function toggleSection(section: SectionId) {
+    setCollapsedSections((current) => {
+      const next = new Set(current);
+      if (next.has(section)) {
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+      return next;
+    });
   }
 
   function previewChord(chord: DiatonicChord) {
@@ -372,8 +387,10 @@ export function ChordExplorer() {
           <Selectors
             tonic={tonic}
             mode={mode}
+            isCollapsed={collapsedSections.has("selectors")}
             onTonicChange={handleTonicChange}
             onModeChange={handleModeChange}
+            onToggleCollapse={() => toggleSection("selectors")}
           />
 
           {/* ZONE 2 */}
@@ -382,26 +399,27 @@ export function ChordExplorer() {
             mode={mode}
             selectedDegree={selectedDegree}
             chordType={chordType}
+            isCollapsed={collapsedSections.has("chords")}
             onPreviewChord={previewChord}
             onAddChord={appendChord}
             onChangeChordType={handleChordTypeChange}
+            onToggleCollapse={() => toggleSection("chords")}
           />
 
-          <ProgressionTemplates onApplyTemplate={replaceWithTemplate} />
+          <ProgressionTemplates
+            isCollapsed={collapsedSections.has("templates")}
+            onApplyTemplate={replaceWithTemplate}
+            onToggleCollapse={() => toggleSection("templates")}
+          />
 
           {/* ZONE 3 */}
-          <section className="border-b border-[var(--rule)] py-9">
-            <header className="mb-6 flex items-baseline gap-[10px]">
-              <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-2)]">
-                04
-              </span>
-              <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
-                Keyboard
-              </span>
-              <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
-                {keyboardReadout}
-              </span>
-            </header>
+          <CollapsibleSection
+            index="04"
+            title="Keyboard"
+            readout={keyboardReadout}
+            isCollapsed={collapsedSections.has("keyboard")}
+            onToggle={() => toggleSection("keyboard")}
+          >
             <PianoKeyboard
               activeNotes={keyboardNotes}
               alternateNotes={keyboardNotes}
@@ -409,7 +427,7 @@ export function ChordExplorer() {
               rootNote={keyboardDisplayMode === "chord" ? selectedChord?.notes[0] : tonic}
               inversion={keyboardDisplayMode === "chord" ? (selectedChord?.inversion ?? 0) : 0}
             />
-          </section>
+          </CollapsibleSection>
 
           {/* ZONE 4 */}
           <ProgressionSequence
@@ -419,6 +437,7 @@ export function ChordExplorer() {
             keyLabel={keyLabel}
             isPlaying={isPlaying}
             isLooping={isLooping}
+            isCollapsed={collapsedSections.has("progression")}
             copyMessage={copyMessage}
             onRemove={removeChord}
             onReorder={reorderChord}
@@ -426,6 +445,7 @@ export function ChordExplorer() {
             onChangeInversion={changeChordInversion}
             onTogglePlayback={togglePlayback}
             onToggleLoop={() => setIsLooping((current) => !current)}
+            onToggleCollapse={() => toggleSection("progression")}
             onClear={clearProgression}
             onCopy={copyAsText}
           />

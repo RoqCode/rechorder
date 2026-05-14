@@ -10,15 +10,18 @@ import {
 } from "@/lib/music/chords";
 import { ChordDisplay } from "./chord-display";
 import { CHORD_TYPE_LABELS } from "./chord-type-labels";
+import { CollapsibleSection } from "./collapsible-section";
 
 type ChordGridProps = {
   chords: DiatonicChord[];
   mode: MusicMode;
   selectedDegree: number | null;
   chordType: ChordType;
+  isCollapsed: boolean;
   onPreviewChord: (chord: DiatonicChord) => void;
   onAddChord: (chord: DiatonicChord) => void;
   onChangeChordType: (chordType: ChordType) => void;
+  onToggleCollapse: () => void;
 };
 
 export function ChordGrid({
@@ -26,9 +29,11 @@ export function ChordGrid({
   mode,
   selectedDegree,
   chordType,
+  isCollapsed,
   onPreviewChord,
   onAddChord,
   onChangeChordType,
+  onToggleCollapse,
 }: ChordGridProps) {
   const selectedChord = chords.find((chord) => chord.degree === selectedDegree);
   const readout = selectedChord
@@ -36,19 +41,13 @@ export function ChordGrid({
     : "Tap a chord to preview";
 
   return (
-    <section className="border-b border-[var(--rule)] py-9">
-      <header className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
-        <div className="flex items-baseline gap-[10px]">
-          <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-2)]">
-            02
-          </span>
-          <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
-            Diatonic Chords
-          </span>
-          <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
-            {readout}
-          </span>
-        </div>
+    <CollapsibleSection
+      index="02"
+      title="Diatonic Chords"
+      readout={readout}
+      isCollapsed={isCollapsed}
+      onToggle={onToggleCollapse}
+      actions={
         <div className="flex gap-[6px]">
           {CHORD_TYPES.map((type) => {
             const isActive = type === chordType;
@@ -70,8 +69,8 @@ export function ChordGrid({
             );
           })}
         </div>
-      </header>
-
+      }
+    >
       <div className="grid grid-cols-3 gap-[14px] sm:grid-cols-4 md:grid-cols-7">
         {chords.map((chord) => {
           const isSelected = selectedDegree === chord.degree;
@@ -133,6 +132,6 @@ export function ChordGrid({
           );
         })}
       </div>
-    </section>
+    </CollapsibleSection>
   );
 }

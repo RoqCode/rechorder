@@ -5,6 +5,7 @@ import { useState } from "react";
 import { type ChordInversion, formatNote, type DiatonicChord } from "@/lib/music/chords";
 import { getVoicedNotes } from "@/lib/music/keyboard";
 import { ChordDisplay } from "./chord-display";
+import { CollapsibleSection } from "./collapsible-section";
 
 type ProgressionSequenceProps = {
   progression: DiatonicChord[];
@@ -13,6 +14,7 @@ type ProgressionSequenceProps = {
   keyLabel: string;
   isPlaying: boolean;
   isLooping: boolean;
+  isCollapsed: boolean;
   copyMessage: string;
   onRemove: (index: number) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
@@ -20,6 +22,7 @@ type ProgressionSequenceProps = {
   onChangeInversion: (index: number, inversion: ChordInversion) => void;
   onTogglePlayback: () => void;
   onToggleLoop: () => void;
+  onToggleCollapse: () => void;
   onClear: () => void;
   onCopy: () => void;
 };
@@ -31,6 +34,7 @@ export function ProgressionSequence({
   keyLabel,
   isPlaying,
   isLooping,
+  isCollapsed,
   copyMessage,
   onRemove,
   onReorder,
@@ -38,6 +42,7 @@ export function ProgressionSequence({
   onChangeInversion,
   onTogglePlayback,
   onToggleLoop,
+  onToggleCollapse,
   onClear,
   onCopy,
 }: ProgressionSequenceProps) {
@@ -50,19 +55,13 @@ export function ProgressionSequence({
   const activeChord = effectiveActiveIndex !== null ? (progression[effectiveActiveIndex] ?? null) : null;
 
   return (
-    <section className="border-b border-[var(--rule)] py-9">
-      <header className="mb-6 flex flex-wrap items-baseline justify-between gap-4">
-        <div className="flex items-baseline gap-[10px]">
-          <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-2)]">
-            05
-          </span>
-          <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
-            Progression
-          </span>
-          <span className="font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
-            {readout}
-          </span>
-        </div>
+    <CollapsibleSection
+      index="05"
+      title="Progression"
+      readout={readout}
+      isCollapsed={isCollapsed}
+      onToggle={onToggleCollapse}
+      actions={
         <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-[10px] uppercase tracking-[0.10em] text-[var(--text-3)]">
           <button
             type="button"
@@ -100,8 +99,8 @@ export function ProgressionSequence({
             {copyMessage || "Copy as text"}
           </button>
         </div>
-      </header>
-
+      }
+    >
       <div
         className="flex min-h-[132px] flex-wrap items-stretch gap-[14px] bg-[var(--inset)] p-5"
         style={{ borderRadius: "var(--radius)" }}
@@ -263,7 +262,7 @@ export function ProgressionSequence({
           })}
         </div>
       ) : null}
-    </section>
+    </CollapsibleSection>
   );
 }
 
