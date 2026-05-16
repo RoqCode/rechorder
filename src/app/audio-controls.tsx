@@ -24,6 +24,11 @@ const PLAYBACK_STYLE_LABELS: Record<PlaybackStyle, string> = {
   up: "UP",
   down: "DWN",
   bounce: "BNC",
+  alt: "ALT",
+  zig: "ZIG",
+  up2: "UP2",
+  down2: "DN2",
+  bounce2: "BN2",
   sustain: "SUS",
 };
 
@@ -101,11 +106,10 @@ export function AudioControls({
       </label>
 
       <label className="flex items-center gap-2">
-        <span>BPM</span>
+        <span>BPM {String(tempo).padStart(3, "0")}</span>
         <input
-          className="h-7 w-[52px] border-[0.5px] border-[var(--hair)] bg-[var(--surface)] px-2 text-center font-mono text-[11px] uppercase tracking-[0.04em] text-[var(--text)] outline-none focus:border-[var(--text-2)]"
-          style={{ borderRadius: "var(--radius)" }}
-          type="number"
+          className="h-1 w-[112px] accent-[var(--accent)]"
+          type="range"
           min={MIN_TEMPO}
           max={MAX_TEMPO}
           value={tempo}

@@ -10,13 +10,18 @@ export const PLAYBACK_STYLES = [
   "up",
   "down",
   "bounce",
+  "alt",
+  "zig",
+  "up2",
+  "down2",
+  "bounce2",
   "sustain",
 ] as const;
 export type PlaybackStyle = (typeof PLAYBACK_STYLES)[number];
 
 export const PLAYBACK_STYLE_OPTIONS: Record<AudioArt, PlaybackStyle[]> = {
   piano: ["block", "broken", "pulse"],
-  arp: ["up", "down", "bounce"],
+  arp: ["up", "down", "bounce", "alt", "zig", "up2", "down2", "bounce2"],
   pad: ["sustain"],
   strings: ["sustain"],
 };
@@ -152,31 +157,14 @@ const KEY_SEMITONES: Record<string, number> = {
 export function getChordPlaybackDuration(settings: AudioSettings) {
   const tempo = clampTempo(settings.tempo);
 
-  if (settings.audioArt === "arp") {
-    return (60 / tempo / 2) * 4;
-  }
-
-  return 60 / tempo;
+  return (60 / tempo) * 2;
 }
 
 export function getArpFrequencies(frequencies: number[], style: PlaybackStyle) {
   if (frequencies.length === 0) return [];
 
-  if (style === "down") {
-    return getArpPatternIndexes(frequencies.length, "down").map(
-      (index) => frequencies[index],
-    );
-  }
-
-  if (style === "bounce") {
-    return getArpPatternIndexes(frequencies.length, "bounce").map(
-      (index) => frequencies[index],
-    );
-  }
-
-  return getArpPatternIndexes(frequencies.length, "up").map((index, step) => {
-    const frequency = frequencies[index];
-    return frequencies.length === 3 && step === 3 ? frequency * 2 : frequency;
+  return getArpPatternSteps(frequencies.length, style).map(({ index, octave }) => {
+    return frequencies[index] * 2 ** octave;
   });
 }
 
@@ -219,14 +207,14 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
   setAmbience(graph, settings.ambience);
 
   if (settings.audioArt === "arp") {
-    const stepDuration = 60 / clampTempo(settings.tempo) / 2;
     const arpFrequencies = getArpFrequencies(frequencies, settings.playbackStyle);
+    const stepDuration = getChordPlaybackDuration(settings) / arpFrequencies.length;
     if (bassRootFrequency) {
       voices.push(
         playTone(audioContext, graph.input, bassRootFrequency, now, {
           ...preset,
-          duration: stepDuration * Math.max(1.1, frequencies.length),
-          gain: baseGain * preset.gain * 0.46,
+          duration: stepDuration * Math.max(1.1, arpFrequencies.length),
+          gain: baseGain * preset.gain * 0.54,
         }),
       );
     }
@@ -254,7 +242,7 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
           sustain: 0.12,
           release: 0.18,
           duration: getChordPlaybackDuration(settings) * 0.82,
-          gain: baseGain * preset.gain * 0.36,
+          gain: baseGain * preset.gain * 0.42,
         }),
       );
     }
@@ -288,7 +276,7 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
       baseGain,
       stagger:
         settings.audioArt === "piano" && settings.playbackStyle === "broken"
-          ? 0.045
+          ? getStrumStagger(settings)
           : preset.stagger,
     }),
   );
@@ -296,11 +284,39 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
   return voices;
 }
 
-function getArpPatternIndexes(
-  noteCount: number,
-  style: "up" | "down" | "bounce",
-) {
-  if (noteCount === 1) return [0, 0, 0, 0];
+function getArpPatternSteps(noteCount: number, style: PlaybackStyle) {
+  if (noteCount === 1) {
+    return [0, 0, 0, 0].map((index) => ({ index, octave: 0 }));
+  }
+
+  if (style === "up2") {
+    const pattern = noteCount >= 4
+      ? [[0, 0], [1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1], [3, 1]]
+      : [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1], [1, 1], [0, 1]];
+    return toArpSteps(pattern);
+  }
+
+  if (style === "down2") {
+    const pattern = noteCount >= 4
+      ? [[3, 1], [2, 1], [1, 1], [0, 1], [3, 0], [2, 0], [1, 0], [0, 0]]
+      : [[2, 1], [1, 1], [0, 1], [2, 0], [1, 0], [0, 0], [1, 0], [2, 0]];
+    return toArpSteps(pattern);
+  }
+
+  if (style === "bounce2") {
+    const pattern = noteCount >= 4
+      ? [[0, 0], [2, 0], [0, 1], [3, 0], [1, 1], [3, 1], [2, 1], [0, 1]]
+      : [[0, 0], [2, 0], [0, 1], [1, 0], [2, 1], [1, 1], [2, 0], [0, 1]];
+    return toArpSteps(pattern);
+  }
+
+  return getArpPatternIndexes(noteCount, style).map((index, step) => ({
+    index,
+    octave: shouldLiftTriadRoot(style, noteCount, step) ? 1 : 0,
+  }));
+}
+
+function getArpPatternIndexes(noteCount: number, style: PlaybackStyle) {
   if (style === "down") {
     return noteCount >= 4 ? [3, 2, 1, 0] : [2, 1, 0, 1];
   }
@@ -308,8 +324,29 @@ function getArpPatternIndexes(
     const top = Math.min(noteCount - 1, 2);
     return [0, top, 1, top];
   }
-
+  if (style === "alt") {
+    return noteCount >= 4 ? [0, 2, 1, 3] : [0, 2, 1, 0];
+  }
+  if (style === "zig") {
+    return noteCount >= 4 ? [0, 2, 1, 3] : [0, 1, 0, 2];
+  }
   return noteCount >= 4 ? [0, 1, 2, 3] : [0, 1, 2, 0];
+}
+
+function toArpSteps(pattern: number[][]) {
+  return pattern.map(([index, octave]) => ({ index, octave }));
+}
+
+function shouldLiftTriadRoot(
+  style: PlaybackStyle,
+  noteCount: number,
+  step: number,
+) {
+  return noteCount === 3 && style === "up" && step === 3;
+}
+
+function getStrumStagger(settings: AudioSettings) {
+  return getChordPlaybackDuration(settings) / 24;
 }
 
 function playChordBlock({
@@ -341,7 +378,7 @@ function playChordBlock({
         ...preset,
         attack: Math.max(preset.attack, 0.01),
         duration,
-        gain: baseGain * preset.gain * 0.58,
+        gain: baseGain * preset.gain * 0.66,
       }),
     );
   }

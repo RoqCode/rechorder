@@ -130,11 +130,11 @@ export function useProgressionPlayback({
       timeoutsRef.current.push(
         window.setTimeout(
           () => {
-            setPlayingIndex(null);
             if (isLoopingRef.current) {
-              scheduleCycle(audioContext.currentTime + 0.05);
+              scheduleCycle(cycleStartTime + cycleDuration);
               return;
             }
+            setPlayingIndex(null);
             setIsPlaying(false);
           },
           Math.max(0, (cycleStartTime + cycleDuration - audioContext.currentTime) * 1000),
