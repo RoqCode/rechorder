@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 
-import type { ChordInversion, DiatonicChord } from "@/lib/music/chords";
+import type {
+  BassRootOctavesDown,
+  ChordInversion,
+  ChordOctaveOffset,
+  DiatonicChord,
+} from "@/lib/music/chords";
 import {
   applyProgressionTemplate,
   type ProgressionTemplate,
@@ -23,7 +28,7 @@ export function useProgressionEditor({
   >(null);
 
   function appendChord(chord: DiatonicChord) {
-    const nextChord = { ...chord, inversion: chord.inversion ?? 0 };
+    const nextChord = normalizeProgressionChord(chord);
     setProgression((current) => {
       setActiveProgressionIndex(current.length);
       return [...current, nextChord];
@@ -64,7 +69,9 @@ export function useProgressionEditor({
   }
 
   function replaceWithTemplate(template: ProgressionTemplate) {
-    const nextProgression = applyProgressionTemplate(template, chords);
+    const nextProgression = applyProgressionTemplate(template, chords).map(
+      normalizeProgressionChord,
+    );
     setProgression(nextProgression);
     setActiveProgressionIndex(0);
     setStatusMessage(`Loaded ${template.name}`);
@@ -91,8 +98,35 @@ export function useProgressionEditor({
     return updatedChord;
   }
 
+  function changeChordOctaveOffset(index: number, octaveOffset: ChordOctaveOffset) {
+    const chord = progression[index];
+    const updatedChord = chord ? { ...chord, octaveOffset } : null;
+    setProgression((current) =>
+      current.map((chord, i) =>
+        i === index ? { ...chord, octaveOffset } : chord,
+      ),
+    );
+    if (updatedChord) setActiveProgressionIndex(index);
+    return updatedChord;
+  }
+
+  function changeChordBassRoot(
+    index: number,
+    bassRootOctavesDown: BassRootOctavesDown,
+  ) {
+    const chord = progression[index];
+    const updatedChord = chord ? { ...chord, bassRootOctavesDown } : null;
+    setProgression((current) =>
+      current.map((chord, i) =>
+        i === index ? { ...chord, bassRootOctavesDown } : chord,
+      ),
+    );
+    if (updatedChord) setActiveProgressionIndex(index);
+    return updatedChord;
+  }
+
   function loadProgression(nextProgression: DiatonicChord[]) {
-    setProgression(nextProgression);
+    setProgression(nextProgression.map(normalizeProgressionChord));
     setActiveProgressionIndex(nextProgression.length > 0 ? 0 : null);
   }
 
@@ -107,6 +141,17 @@ export function useProgressionEditor({
     replaceWithTemplate,
     focusProgressionChord,
     changeChordInversion,
+    changeChordOctaveOffset,
+    changeChordBassRoot,
     loadProgression,
+  };
+}
+
+function normalizeProgressionChord(chord: DiatonicChord): DiatonicChord {
+  return {
+    ...chord,
+    inversion: chord.inversion ?? 0,
+    octaveOffset: chord.octaveOffset ?? 0,
+    bassRootOctavesDown: chord.bassRootOctavesDown ?? 0,
   };
 }

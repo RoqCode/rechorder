@@ -1,5 +1,5 @@
 import type { DiatonicChord } from "@/lib/music/chords";
-import { getKeyRelativeVoicingKeyIds } from "@/lib/music/keyboard";
+import { getBassRootKeyId, getKeyRelativeVoicingKeyIds } from "@/lib/music/keyboard";
 
 export const AUDIO_ARTS = ["piano", "pad", "arp", "strings"] as const;
 export type AudioArt = (typeof AUDIO_ARTS)[number];
@@ -149,8 +149,21 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
   }
 
   const now = startTime ?? audioContext.currentTime;
-  const chordKeyIds = [...getKeyRelativeVoicingKeyIds(chord.notes, rootFloorKey, chord.inversion ?? 0)];
+  const chordKeyIds = [
+    ...getKeyRelativeVoicingKeyIds(
+      chord.notes,
+      rootFloorKey,
+      chord.inversion ?? 0,
+      chord.octaveOffset ?? 0,
+    ),
+  ];
+  const bassRootKeyId = getBassRootKeyId(
+    chord.notes,
+    rootFloorKey,
+    chord.bassRootOctavesDown ?? 0,
+  );
   const frequencies = chordKeyIds.map(getKeyFrequency);
+  const bassRootFrequency = bassRootKeyId ? getKeyFrequency(bassRootKeyId) : null;
   const baseGain = settings.volume / 100;
   const preset = PRESETS[settings.audioArt];
   const noteDuration = startTime === undefined ? preset.duration : Math.min(preset.duration, getChordPlaybackDuration(settings) * 0.88);
@@ -161,6 +174,15 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
 
   if (settings.audioArt === "arp") {
     const stepDuration = 60 / clampTempo(settings.tempo) / 2;
+    if (bassRootFrequency) {
+      voices.push(
+        playTone(audioContext, graph.input, bassRootFrequency, now, {
+          ...preset,
+          duration: stepDuration * Math.max(1.1, frequencies.length),
+          gain: baseGain * preset.gain * 0.46,
+        }),
+      );
+    }
     frequencies.forEach((frequency, index) => {
       voices.push(
         playTone(audioContext, graph.input, frequency, now + index * stepDuration, {
@@ -171,6 +193,17 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
       );
     });
     return voices;
+  }
+
+  if (bassRootFrequency) {
+    voices.push(
+      playTone(audioContext, graph.input, bassRootFrequency, now, {
+        ...preset,
+        attack: Math.max(preset.attack, 0.01),
+        duration: noteDuration,
+        gain: baseGain * preset.gain * 0.58,
+      }),
+    );
   }
 
   frequencies.forEach((frequency, index) => {

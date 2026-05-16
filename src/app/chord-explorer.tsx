@@ -5,7 +5,9 @@ import { useMemo, useState } from "react";
 import {
   type ChordType,
   type ChordInversion,
+  type ChordOctaveOffset,
   type DiatonicChord,
+  type BassRootOctavesDown,
   formatNote,
   getDiatonicChords,
   getPitchClass,
@@ -124,6 +126,8 @@ export function ChordExplorer() {
     replaceWithTemplate: replaceProgressionWithTemplate,
     focusProgressionChord: selectProgressionChord,
     changeChordInversion: updateProgressionChordInversion,
+    changeChordOctaveOffset: updateProgressionChordOctaveOffset,
+    changeChordBassRoot: updateProgressionChordBassRoot,
     loadProgression,
   } = useProgressionEditor({
     chords,
@@ -291,6 +295,30 @@ export function ChordExplorer() {
   ) {
     stopPlayback();
     const updatedChord = updateProgressionChordInversion(index, inversion);
+    if (!updatedChord) return;
+
+    focusChord(updatedChord);
+    playChord(updatedChord);
+  }
+
+  function changeChordOctaveOffset(
+    index: number,
+    octaveOffset: ChordOctaveOffset,
+  ) {
+    stopPlayback();
+    const updatedChord = updateProgressionChordOctaveOffset(index, octaveOffset);
+    if (!updatedChord) return;
+
+    focusChord(updatedChord);
+    playChord(updatedChord);
+  }
+
+  function changeChordBassRoot(
+    index: number,
+    bassRootOctavesDown: BassRootOctavesDown,
+  ) {
+    stopPlayback();
+    const updatedChord = updateProgressionChordBassRoot(index, bassRootOctavesDown);
     if (!updatedChord) return;
 
     focusChord(updatedChord);
@@ -468,6 +496,11 @@ export function ChordExplorer() {
                   ? (selectedChord?.inversion ?? 0)
                   : 0
               }
+              octaveOffset={
+                keyboardDisplayMode === "chord"
+                  ? (selectedChord?.octaveOffset ?? 0)
+                  : 0
+              }
             />
           </CollapsibleSection>
 
@@ -486,6 +519,8 @@ export function ChordExplorer() {
             onReorder={reorderChord}
             onFocusChord={focusProgressionChord}
             onChangeInversion={changeChordInversion}
+            onChangeOctaveOffset={changeChordOctaveOffset}
+            onChangeBassRoot={changeChordBassRoot}
             onTogglePlayback={togglePlayback}
             onToggleLoop={() => setIsLooping((current) => !current)}
             onToggleCollapse={() => toggleSection("progression")}

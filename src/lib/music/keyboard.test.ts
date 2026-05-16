@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getCenteredRootFloorKey,
+  getBassRootKeyId,
   getKeyRelativeRootPositionKeyIds,
   getKeyRelativeVoicingKeyIds,
   getVoicedNotes,
@@ -81,6 +82,22 @@ describe("getKeyRelativeVoicingKeyIds", () => {
   it("moves inverted notes above the lower chord tones", () => {
     expect([...getKeyRelativeVoicingKeyIds(["C", "E", "G"], "C3", 1)]).toEqual(["E3", "G3", "C4"]);
     expect([...getKeyRelativeVoicingKeyIds(["C", "E", "G", "B"], "C3", 3)]).toEqual(["B3", "C4", "E4", "G4"]);
+  });
+
+  it("transposes the whole voicing by octaves after inversion", () => {
+    expect([...getKeyRelativeVoicingKeyIds(["C", "E", "G"], "C3", 1, -1)]).toEqual(["E2", "G2", "C3"]);
+    expect([...getKeyRelativeVoicingKeyIds(["C", "E", "G"], "C3", 1, 1)]).toEqual(["E4", "G4", "C5"]);
+  });
+});
+
+describe("getBassRootKeyId", () => {
+  it("returns a low root below the root-position chord", () => {
+    expect(getBassRootKeyId(["C", "E", "G"], "C3", 1)).toBe("C2");
+    expect(getBassRootKeyId(["C", "E", "G"], "C3", 2)).toBe("C1");
+  });
+
+  it("returns null when bass root is disabled", () => {
+    expect(getBassRootKeyId(["C", "E", "G"], "C3", 0)).toBeNull();
   });
 });
 

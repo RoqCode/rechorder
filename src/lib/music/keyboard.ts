@@ -1,4 +1,9 @@
-import { type ChordInversion, getPitchClass } from "./chords";
+import {
+  type BassRootOctavesDown,
+  type ChordInversion,
+  type ChordOctaveOffset,
+  getPitchClass,
+} from "./chords";
 
 export const WHITE_KEYS = [
   "C2",
@@ -53,8 +58,28 @@ export function getKeyRelativeRootPositionKeyIds(activeNotes: string[], rootFloo
   return getKeyRelativeVoicingKeyIds(activeNotes, rootFloorKey, 0);
 }
 
-export function getKeyRelativeVoicingKeyIds(activeNotes: string[], rootFloorKey: string, inversion: ChordInversion = 0) {
-  return new Set(getRootPositionCandidate(getVoicedNotes(activeNotes, inversion), rootFloorKey) ?? []);
+export function getKeyRelativeVoicingKeyIds(
+  activeNotes: string[],
+  rootFloorKey: string,
+  inversion: ChordInversion = 0,
+  octaveOffset: ChordOctaveOffset = 0,
+) {
+  const keys = getRootPositionCandidate(getVoicedNotes(activeNotes, inversion), rootFloorKey) ?? [];
+  return new Set(keys.map((key) => transposeKeyByOctaves(key, octaveOffset)));
+}
+
+export function getBassRootKeyId(
+  activeNotes: string[],
+  rootFloorKey: string,
+  octavesDown: BassRootOctavesDown = 0,
+) {
+  if (octavesDown === 0 || activeNotes.length === 0) return null;
+
+  const rootPositionKeys = getRootPositionCandidate(activeNotes, rootFloorKey);
+  const rootKey = rootPositionKeys?.[0];
+  if (!rootKey) return null;
+
+  return transposeKeyByOctaves(rootKey, -octavesDown);
 }
 
 export function getVoicedNotes(activeNotes: string[], inversion: ChordInversion = 0) {
@@ -110,4 +135,9 @@ function getKeyPosition(note: string) {
   const noteName = stripOctave(note);
 
   return octave * 12 + getPitchClass(noteName);
+}
+
+function transposeKeyByOctaves(key: string, octaves: number) {
+  const octave = Number(key.at(-1));
+  return `${stripOctave(key)}${octave + octaves}`;
 }

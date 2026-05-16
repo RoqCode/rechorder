@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { getDiatonicChords } from "../lib/music/chords";
-import { validateProgressionInput } from "../lib/progressions/progression-schema";
+import { progressionInputSchema, validateProgressionInput } from "../lib/progressions/progression-schema";
 
 const validChords = getDiatonicChords({ tonic: "C", mode: "ionian", chordType: "triads" }).map((chord) => ({
   ...chord,
   inversion: 0 as const,
+  octaveOffset: 0 as const,
+  bassRootOctavesDown: 0 as const,
 }));
 
 describe("validateProgressionInput", () => {
@@ -18,6 +20,26 @@ describe("validateProgressionInput", () => {
       chords: validChords.slice(0, 3),
       notes: "",
     }).chords).toHaveLength(3);
+  });
+
+  it("defaults voicing controls for older saved chords", () => {
+    const parsed = progressionInputSchema.parse({
+      name: "Test",
+      tonic: "C",
+      mode: "ionian",
+      chordType: "triads",
+      chords: [{
+        degree: validChords[0].degree,
+        romanNumeral: validChords[0].romanNumeral,
+        chordName: validChords[0].chordName,
+        notes: validChords[0].notes,
+        inversion: validChords[0].inversion,
+      }],
+      notes: "",
+    });
+
+    expect(parsed.chords[0].octaveOffset).toBe(0);
+    expect(parsed.chords[0].bassRootOctavesDown).toBe(0);
   });
 
   it("rejects unsupported tonic and mode combinations", () => {
@@ -37,7 +59,7 @@ describe("validateProgressionInput", () => {
       tonic: "C",
       mode: "ionian",
       chordType: "triads",
-      chords: [{ degree: 1, romanNumeral: "I", chordName: "D", notes: ["D", "F#", "A"], inversion: 0 }],
+      chords: [{ degree: 1, romanNumeral: "I", chordName: "D", notes: ["D", "F#", "A"], inversion: 0, octaveOffset: 0, bassRootOctavesDown: 0 }],
       notes: "",
     })).toThrow("Progression contains chords outside the selected key");
   });
@@ -51,5 +73,25 @@ describe("validateProgressionInput", () => {
       chords: [{ ...validChords[0], inversion: 3 }],
       notes: "",
     })).toThrow("Progression contains an inversion outside the chord range");
+  });
+
+  it("rejects octave and bass-root values outside the supported range", () => {
+    expect(() => progressionInputSchema.parse({
+      name: "Test",
+      tonic: "C",
+      mode: "ionian",
+      chordType: "triads",
+      chords: [{ ...validChords[0], octaveOffset: 2 }],
+      notes: "",
+    })).toThrow();
+
+    expect(() => progressionInputSchema.parse({
+      name: "Test",
+      tonic: "C",
+      mode: "ionian",
+      chordType: "triads",
+      chords: [{ ...validChords[0], bassRootOctavesDown: 3 }],
+      notes: "",
+    })).toThrow();
   });
 });

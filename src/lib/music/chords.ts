@@ -9,10 +9,14 @@ export const MUSIC_MODES = [
 ] as const;
 export const CHORD_TYPES = ["triads", "sevenths"] as const;
 export const CHORD_INVERSIONS = [0, 1, 2, 3] as const;
+export const CHORD_OCTAVE_OFFSETS = [-1, 0, 1] as const;
+export const BASS_ROOT_OCTAVES_DOWN = [0, 1, 2] as const;
 
 export type MusicMode = (typeof MUSIC_MODES)[number];
 export type ChordType = (typeof CHORD_TYPES)[number];
 export type ChordInversion = (typeof CHORD_INVERSIONS)[number];
+export type ChordOctaveOffset = (typeof CHORD_OCTAVE_OFFSETS)[number];
+export type BassRootOctavesDown = (typeof BASS_ROOT_OCTAVES_DOWN)[number];
 
 export type DiatonicChord = {
   degree: number;
@@ -20,6 +24,8 @@ export type DiatonicChord = {
   chordName: string;
   notes: string[];
   inversion?: ChordInversion;
+  octaveOffset?: ChordOctaveOffset;
+  bassRootOctavesDown?: BassRootOctavesDown;
 };
 
 export type GetDiatonicChordsInput = {

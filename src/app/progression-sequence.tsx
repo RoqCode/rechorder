@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 
-import { type ChordInversion, formatNote, type DiatonicChord } from "@/lib/music/chords";
+import {
+  BASS_ROOT_OCTAVES_DOWN,
+  type BassRootOctavesDown,
+  CHORD_OCTAVE_OFFSETS,
+  type ChordInversion,
+  type ChordOctaveOffset,
+  formatNote,
+  type DiatonicChord,
+} from "@/lib/music/chords";
 import type { ChordRelation } from "@/lib/music/chord-relations";
 import { getVoicedNotes } from "@/lib/music/keyboard";
 import { ChordDisplay } from "./chord-display";
@@ -22,6 +30,8 @@ type ProgressionSequenceProps = {
   onReorder: (fromIndex: number, toIndex: number) => void;
   onFocusChord: (index: number) => void;
   onChangeInversion: (index: number, inversion: ChordInversion) => void;
+  onChangeOctaveOffset: (index: number, octaveOffset: ChordOctaveOffset) => void;
+  onChangeBassRoot: (index: number, bassRootOctavesDown: BassRootOctavesDown) => void;
   onTogglePlayback: () => void;
   onToggleLoop: () => void;
   onToggleCollapse: () => void;
@@ -43,6 +53,8 @@ export function ProgressionSequence({
   onReorder,
   onFocusChord,
   onChangeInversion,
+  onChangeOctaveOffset,
+  onChangeBassRoot,
   onTogglePlayback,
   onToggleLoop,
   onToggleCollapse,
@@ -121,6 +133,8 @@ export function ProgressionSequence({
             const isDragging = dragSource === index;
             const isDropTarget = dropTarget === index && dragSource !== index;
             const activeInversion = chord.inversion ?? 0;
+            const octaveOffset = chord.octaveOffset ?? 0;
+            const bassRootOctavesDown = chord.bassRootOctavesDown ?? 0;
             const notesDisplay = getVoicedNotes(chord.notes, activeInversion).map(formatNote).join(" ");
 
             return (
@@ -176,7 +190,7 @@ export function ProgressionSequence({
                           {chord.romanNumeral}
                         </div>
                         <div className="mt-[6px] font-mono text-[9px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
-                          {getInversionLabel(activeInversion)}
+                          {getVoicingSummary(activeInversion, octaveOffset, bassRootOctavesDown)}
                         </div>
                       </div>
                     </div>
@@ -231,32 +245,98 @@ export function ProgressionSequence({
 
       {activeChord && effectiveActiveIndex !== null ? (
         <div className="mt-4 grid gap-3">
-          <div className="flex flex-wrap gap-[6px]">
+          <ControlGroup label="Inversion">
             {getInversionOptions(activeChord.notes.length).map((inversion) => {
               const isActive = inversion === (activeChord.inversion ?? 0);
 
               return (
-                <button
+                <SmallControlButton
                   key={inversion}
-                  type="button"
-                  aria-pressed={isActive}
+                  isActive={isActive}
                   onClick={() => onChangeInversion(effectiveActiveIndex, inversion)}
-                  className={`flex h-[26px] min-w-[44px] cursor-pointer items-center justify-center border-[0.5px] px-2 text-center font-mono text-[10px] font-medium uppercase leading-none tracking-[0.12em] transition duration-[var(--t)] ${
-                    isActive
-                      ? "border-[var(--accent)] bg-[var(--accent-bg)] text-[var(--accent)]"
-                      : "border-[var(--hair)] text-[var(--text-3)] hover:border-[var(--text-2)] hover:text-[var(--text)]"
-                  }`}
-                  style={{ borderRadius: "var(--radius)" }}
                 >
                   {getInversionLabel(inversion)}
-                </button>
+                </SmallControlButton>
               );
             })}
-          </div>
+          </ControlGroup>
+          <ControlGroup label="Octave">
+            {CHORD_OCTAVE_OFFSETS.map((octaveOffset) => {
+              const isActive = octaveOffset === (activeChord.octaveOffset ?? 0);
+
+              return (
+                <SmallControlButton
+                  key={octaveOffset}
+                  isActive={isActive}
+                  onClick={() => onChangeOctaveOffset(effectiveActiveIndex, octaveOffset)}
+                >
+                  {getOctaveOffsetLabel(octaveOffset)}
+                </SmallControlButton>
+              );
+            })}
+          </ControlGroup>
+          <ControlGroup label="Bass root">
+            {BASS_ROOT_OCTAVES_DOWN.map((bassRootOctavesDown) => {
+              const isActive = bassRootOctavesDown === (activeChord.bassRootOctavesDown ?? 0);
+
+              return (
+                <SmallControlButton
+                  key={bassRootOctavesDown}
+                  isActive={isActive}
+                  onClick={() => onChangeBassRoot(effectiveActiveIndex, bassRootOctavesDown)}
+                >
+                  {getBassRootLabel(bassRootOctavesDown)}
+                </SmallControlButton>
+              );
+            })}
+          </ControlGroup>
           {nextIdeas.length > 0 ? <NextIdeas ideas={nextIdeas} /> : null}
         </div>
       ) : null}
     </CollapsibleSection>
+  );
+}
+
+function ControlGroup({
+  label,
+  children,
+}: {
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-[68px] font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
+        {label}
+      </span>
+      <div className="flex flex-wrap gap-[6px]">{children}</div>
+    </div>
+  );
+}
+
+function SmallControlButton({
+  isActive,
+  onClick,
+  children,
+}: {
+  isActive: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-pressed={isActive}
+      onClick={onClick}
+      className={`flex h-[26px] min-w-[44px] cursor-pointer items-center justify-center border-[0.5px] px-2 text-center font-mono text-[10px] font-medium uppercase leading-none tracking-[0.12em] transition duration-[var(--t)] ${
+        isActive
+          ? "border-[var(--accent)] bg-[var(--accent-bg)] text-[var(--accent)]"
+          : "border-[var(--hair)] text-[var(--text-3)] hover:border-[var(--text-2)] hover:text-[var(--text)]"
+      }`}
+      style={{ borderRadius: "var(--radius)" }}
+    >
+      {children}
+    </button>
   );
 }
 
@@ -292,4 +372,29 @@ function getInversionLabel(inversion: ChordInversion) {
   if (inversion === 1) return "1st";
   if (inversion === 2) return "2nd";
   return "3rd";
+}
+
+function getOctaveOffsetLabel(octaveOffset: ChordOctaveOffset) {
+  if (octaveOffset === -1) return "-8va";
+  if (octaveOffset === 1) return "+8va";
+  return "0";
+}
+
+function getBassRootLabel(bassRootOctavesDown: BassRootOctavesDown) {
+  if (bassRootOctavesDown === 0) return "Off";
+  return `-${bassRootOctavesDown}oct`;
+}
+
+function getVoicingSummary(
+  inversion: ChordInversion,
+  octaveOffset: ChordOctaveOffset,
+  bassRootOctavesDown: BassRootOctavesDown,
+) {
+  return [
+    getInversionLabel(inversion),
+    octaveOffset !== 0 ? getOctaveOffsetLabel(octaveOffset) : null,
+    bassRootOctavesDown !== 0 ? `Bass ${getBassRootLabel(bassRootOctavesDown)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }

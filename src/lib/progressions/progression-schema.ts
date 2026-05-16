@@ -15,6 +15,8 @@ export type ProgressionChord = {
   chordName: string;
   notes: string[];
   inversion?: 0 | 1 | 2 | 3;
+  octaveOffset?: -1 | 0 | 1;
+  bassRootOctavesDown?: 0 | 1 | 2;
 };
 
 const chordInversionSchema = z.union([
@@ -23,6 +25,16 @@ const chordInversionSchema = z.union([
   z.literal(2),
   z.literal(3),
 ]);
+const chordOctaveOffsetSchema = z.union([
+  z.literal(-1),
+  z.literal(0),
+  z.literal(1),
+]);
+const bassRootOctavesDownSchema = z.union([
+  z.literal(0),
+  z.literal(1),
+  z.literal(2),
+]);
 
 export const progressionChordSchema = z.object({
   degree: z.number().int().min(1).max(7),
@@ -30,6 +42,8 @@ export const progressionChordSchema = z.object({
   chordName: z.string().min(1).max(32),
   notes: z.array(z.string().min(1).max(4)).min(3).max(4),
   inversion: chordInversionSchema.optional().default(0),
+  octaveOffset: chordOctaveOffsetSchema.optional().default(0),
+  bassRootOctavesDown: bassRootOctavesDownSchema.optional().default(0),
 });
 
 export const progressionInputSchema = z.object({
