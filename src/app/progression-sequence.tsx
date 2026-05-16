@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { type ChordInversion, formatNote, type DiatonicChord } from "@/lib/music/chords";
+import type { ChordRelation } from "@/lib/music/chord-relations";
 import { getVoicedNotes } from "@/lib/music/keyboard";
 import { ChordDisplay } from "./chord-display";
 import { CollapsibleSection } from "./collapsible-section";
@@ -16,6 +17,7 @@ type ProgressionSequenceProps = {
   isLooping: boolean;
   isCollapsed: boolean;
   copyMessage: string;
+  nextIdeas: Array<{ chord: DiatonicChord; relation: ChordRelation }>;
   onRemove: (index: number) => void;
   onReorder: (fromIndex: number, toIndex: number) => void;
   onFocusChord: (index: number) => void;
@@ -36,6 +38,7 @@ export function ProgressionSequence({
   isLooping,
   isCollapsed,
   copyMessage,
+  nextIdeas,
   onRemove,
   onReorder,
   onFocusChord,
@@ -227,30 +230,56 @@ export function ProgressionSequence({
       </div>
 
       {activeChord && effectiveActiveIndex !== null ? (
-        <div className="mt-4 flex flex-wrap gap-[6px]">
-          {getInversionOptions(activeChord.notes.length).map((inversion) => {
-            const isActive = inversion === (activeChord.inversion ?? 0);
+        <div className="mt-4 grid gap-3">
+          <div className="flex flex-wrap gap-[6px]">
+            {getInversionOptions(activeChord.notes.length).map((inversion) => {
+              const isActive = inversion === (activeChord.inversion ?? 0);
 
-            return (
-              <button
-                key={inversion}
-                type="button"
-                aria-pressed={isActive}
-                onClick={() => onChangeInversion(effectiveActiveIndex, inversion)}
-                className={`flex h-[26px] min-w-[44px] cursor-pointer items-center justify-center border-[0.5px] px-2 text-center font-mono text-[10px] font-medium uppercase leading-none tracking-[0.12em] transition duration-[var(--t)] ${
-                  isActive
-                    ? "border-[var(--accent)] bg-[var(--accent-bg)] text-[var(--accent)]"
-                    : "border-[var(--hair)] text-[var(--text-3)] hover:border-[var(--text-2)] hover:text-[var(--text)]"
-                }`}
-                style={{ borderRadius: "var(--radius)" }}
-              >
-                {getInversionLabel(inversion)}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={inversion}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => onChangeInversion(effectiveActiveIndex, inversion)}
+                  className={`flex h-[26px] min-w-[44px] cursor-pointer items-center justify-center border-[0.5px] px-2 text-center font-mono text-[10px] font-medium uppercase leading-none tracking-[0.12em] transition duration-[var(--t)] ${
+                    isActive
+                      ? "border-[var(--accent)] bg-[var(--accent-bg)] text-[var(--accent)]"
+                      : "border-[var(--hair)] text-[var(--text-3)] hover:border-[var(--text-2)] hover:text-[var(--text)]"
+                  }`}
+                  style={{ borderRadius: "var(--radius)" }}
+                >
+                  {getInversionLabel(inversion)}
+                </button>
+              );
+            })}
+          </div>
+          {nextIdeas.length > 0 ? <NextIdeas ideas={nextIdeas} /> : null}
         </div>
       ) : null}
     </CollapsibleSection>
+  );
+}
+
+function NextIdeas({
+  ideas,
+}: {
+  ideas: Array<{ chord: DiatonicChord; relation: ChordRelation }>;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 font-mono text-[10px] uppercase leading-none tracking-[0.10em] text-[var(--text-3)]">
+      <span>Next ideas</span>
+      {ideas.map(({ chord, relation }) => (
+        <span
+          key={`${chord.degree}-${relation.label}`}
+          title={relation.description}
+          className="inline-flex items-center gap-2 border-[0.5px] border-[var(--hair)] bg-[var(--surface)] px-2 py-[6px] text-[var(--text-2)]"
+          style={{ borderRadius: "var(--radius)" }}
+        >
+          <span className="text-[var(--text)]">{chord.romanNumeral}</span>
+          <span>{relation.label}</span>
+        </span>
+      ))}
+    </div>
   );
 }
 

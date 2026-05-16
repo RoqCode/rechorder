@@ -8,6 +8,7 @@ import {
   getDegreeFunction,
   type MusicMode,
 } from "@/lib/music/chords";
+import type { ChordRelation } from "@/lib/music/chord-relations";
 import { ChordDisplay } from "./chord-display";
 import { CHORD_TYPE_LABELS } from "./chord-type-labels";
 import { CollapsibleSection } from "./collapsible-section";
@@ -16,6 +17,7 @@ type ChordGridProps = {
   chords: DiatonicChord[];
   mode: MusicMode;
   selectedDegree: number | null;
+  relationsByDegree: Map<number, ChordRelation>;
   chordType: ChordType;
   isCollapsed: boolean;
   onPreviewChord: (chord: DiatonicChord) => void;
@@ -28,6 +30,7 @@ export function ChordGrid({
   chords,
   mode,
   selectedDegree,
+  relationsByDegree,
   chordType,
   isCollapsed,
   onPreviewChord,
@@ -77,6 +80,7 @@ export function ChordGrid({
           const isSelected = selectedDegree === chord.degree;
           const isDominant = chord.romanNumeral === "V" || chord.romanNumeral === "V7";
           const degreeFunction = getDegreeFunction(mode, chord.degree);
+          const relation = relationsByDegree.get(chord.degree);
           const notesDisplay = chord.notes.map(formatNote).join(" ");
 
           return (
@@ -108,6 +112,7 @@ export function ChordGrid({
                   <div className="mt-[6px] font-mono text-[10px] uppercase leading-none tracking-[0.12em] text-[var(--text-3)]">
                     {degreeFunction}
                   </div>
+                  {relation ? <RelationTag relation={relation} /> : null}
                 </div>
 
                 <div className="mt-auto flex items-baseline justify-between gap-2">
@@ -134,5 +139,17 @@ export function ChordGrid({
         })}
       </div>
     </CollapsibleSection>
+  );
+}
+
+function RelationTag({ relation }: { relation: ChordRelation }) {
+  return (
+    <div
+      title={relation.description}
+      className="mt-[8px] inline-flex max-w-full border-[0.5px] border-[var(--accent)] bg-[var(--accent-bg)] px-[6px] py-[4px] font-mono text-[9px] font-medium uppercase leading-none tracking-[0.10em] text-[var(--accent)]"
+      style={{ borderRadius: "var(--radius)" }}
+    >
+      {relation.label}
+    </div>
   );
 }

@@ -15,6 +15,10 @@ import {
   type MusicMode,
 } from "@/lib/music/chords";
 import { type AudioArt } from "@/lib/audio/chord-audio";
+import {
+  getChordRelations,
+  getTopChordRelations,
+} from "@/lib/music/chord-relations";
 import { getCenteredRootFloorKey, getVoicedNotes } from "@/lib/music/keyboard";
 import type { ProgressionTemplate } from "@/lib/music/progression-templates";
 import type { SavedProgression } from "@/lib/progressions/progression-schema";
@@ -86,6 +90,18 @@ export function ChordExplorer() {
     (selectedDegree !== null
       ? (chords.find((c) => c.degree === selectedDegree) ?? null)
       : null);
+  const relationsByDegree = useMemo(
+    () => getChordRelations({ source: selectedChord, candidates: chords, mode }),
+    [selectedChord, chords, mode],
+  );
+  const nextIdeas = useMemo(
+    () =>
+      getTopChordRelations(relationsByDegree).map((relation) => ({
+        relation,
+        chord: chords.find((chord) => chord.degree === relation.targetDegree)!,
+      })),
+    [relationsByDegree, chords],
+  );
   const rootFloorKey = useMemo(
     () =>
       getCenteredRootFloorKey(
@@ -415,6 +431,7 @@ export function ChordExplorer() {
             chords={chords}
             mode={mode}
             selectedDegree={selectedDegree}
+            relationsByDegree={relationsByDegree}
             chordType={chordType}
             isCollapsed={collapsedSections.has("chords")}
             onPreviewChord={previewChord}
@@ -464,6 +481,7 @@ export function ChordExplorer() {
             isLooping={isLooping}
             isCollapsed={collapsedSections.has("progression")}
             copyMessage={copyMessage}
+            nextIdeas={nextIdeas}
             onRemove={removeChord}
             onReorder={reorderChord}
             onFocusChord={focusProgressionChord}
