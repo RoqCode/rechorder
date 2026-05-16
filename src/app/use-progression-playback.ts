@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import {
   type AudioVoice,
   type AudioArt,
+  type PlaybackStyle,
   getChordPlaybackDuration,
   playChordPreview,
 } from "@/lib/audio/chord-audio";
@@ -15,6 +16,7 @@ type PlaybackSettings = {
   volume: number;
   tempo: number;
   audioArt: AudioArt;
+  playbackStyle: PlaybackStyle;
   ambience: number;
 };
 

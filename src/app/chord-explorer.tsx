@@ -16,7 +16,11 @@ import {
   MODE_DESCRIPTORS,
   type MusicMode,
 } from "@/lib/music/chords";
-import { type AudioArt } from "@/lib/audio/chord-audio";
+import {
+  DEFAULT_PLAYBACK_STYLE,
+  type AudioArt,
+  type PlaybackStyle,
+} from "@/lib/audio/chord-audio";
 import {
   getChordRelations,
   getTopChordRelations,
@@ -64,6 +68,7 @@ export function ChordExplorer() {
   const [ambience, setAmbience] = useState(18);
   const [tempo, setTempo] = useState(100);
   const [audioArt, setAudioArt] = useState<AudioArt>("piano");
+  const [playbackStyle, setPlaybackStyle] = useState<PlaybackStyle>("block");
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [collapsedSections, setCollapsedSections] = useState<Set<SectionId>>(
     new Set(),
@@ -145,7 +150,7 @@ export function ChordExplorer() {
   } = useProgressionPlayback({
     progression,
     rootFloorKey,
-    settings: { isMuted, volume, tempo, audioArt, ambience },
+    settings: { isMuted, volume, tempo, audioArt, playbackStyle, ambience },
     onMutedChange: setIsMuted,
     onChordFocus: focusChord,
   });
@@ -217,6 +222,12 @@ export function ChordExplorer() {
   function handleAudioArtChange(nextAudioArt: AudioArt) {
     stopPlayback();
     setAudioArt(nextAudioArt);
+    setPlaybackStyle(DEFAULT_PLAYBACK_STYLE[nextAudioArt]);
+  }
+
+  function handlePlaybackStyleChange(nextPlaybackStyle: PlaybackStyle) {
+    stopPlayback();
+    setPlaybackStyle(nextPlaybackStyle);
   }
 
   function toggleSection(section: SectionId) {
@@ -535,11 +546,13 @@ export function ChordExplorer() {
               volume={volume}
               tempo={tempo}
               audioArt={audioArt}
+              playbackStyle={playbackStyle}
               ambience={ambience}
               onMutedChange={handleMutedChange}
               onVolumeChange={handleVolumeChange}
               onTempoChange={handleTempoChange}
               onAudioArtChange={handleAudioArtChange}
+              onPlaybackStyleChange={handlePlaybackStyleChange}
               onAmbienceChange={handleAmbienceChange}
             />
           </footer>

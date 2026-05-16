@@ -1,6 +1,14 @@
 "use client";
 
-import { AUDIO_ARTS, clampTempo, MAX_TEMPO, MIN_TEMPO, type AudioArt } from "@/lib/audio/chord-audio";
+import {
+  AUDIO_ARTS,
+  clampTempo,
+  MAX_TEMPO,
+  MIN_TEMPO,
+  PLAYBACK_STYLE_OPTIONS,
+  type AudioArt,
+  type PlaybackStyle,
+} from "@/lib/audio/chord-audio";
 
 const AUDIO_ART_ABBREVIATIONS: Record<AudioArt, string> = {
   piano: "PIA",
@@ -9,16 +17,28 @@ const AUDIO_ART_ABBREVIATIONS: Record<AudioArt, string> = {
   strings: "STR",
 };
 
+const PLAYBACK_STYLE_LABELS: Record<PlaybackStyle, string> = {
+  block: "BLK",
+  broken: "STR",
+  pulse: "PLS",
+  up: "UP",
+  down: "DWN",
+  bounce: "BNC",
+  sustain: "SUS",
+};
+
 type AudioControlsProps = {
   isMuted: boolean;
   volume: number;
   tempo: number;
   audioArt: AudioArt;
+  playbackStyle: PlaybackStyle;
   ambience: number;
   onMutedChange: (isMuted: boolean) => void;
   onVolumeChange: (volume: number) => void;
   onTempoChange: (tempo: number) => void;
   onAudioArtChange: (audioArt: AudioArt) => void;
+  onPlaybackStyleChange: (playbackStyle: PlaybackStyle) => void;
   onAmbienceChange: (ambience: number) => void;
 };
 
@@ -29,13 +49,17 @@ export function AudioControls({
   volume,
   tempo,
   audioArt,
+  playbackStyle,
   ambience,
   onMutedChange,
   onVolumeChange,
   onTempoChange,
   onAudioArtChange,
+  onPlaybackStyleChange,
   onAmbienceChange,
 }: AudioControlsProps) {
+  const playbackStyleOptions = PLAYBACK_STYLE_OPTIONS[audioArt];
+
   return (
     <div className="flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-[10px] uppercase tracking-[0.10em] text-[var(--text-3)]">
       <button
@@ -110,6 +134,33 @@ export function AudioControls({
               }`}
             >
               {AUDIO_ART_ABBREVIATIONS[value]}
+            </button>
+          );
+        })}
+      </div>
+
+      <div
+        role="group"
+        aria-label="Playback style"
+        className="flex h-7 overflow-hidden border-[0.5px] border-[var(--hair)]"
+        style={{ borderRadius: "var(--radius)" }}
+      >
+        {playbackStyleOptions.map((value) => {
+          const isSelected = value === playbackStyle;
+          return (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={isSelected}
+              disabled={playbackStyleOptions.length === 1}
+              onClick={() => onPlaybackStyleChange(value)}
+              className={`cursor-pointer px-3 font-mono text-[10px] uppercase leading-none tracking-[0.10em] transition duration-[var(--t)] disabled:cursor-default ${
+                isSelected
+                  ? "bg-[var(--text)] text-[var(--surface)]"
+                  : "text-[var(--text-3)] hover:bg-[var(--inset)] hover:text-[var(--text)]"
+              }`}
+            >
+              {PLAYBACK_STYLE_LABELS[value]}
             </button>
           );
         })}

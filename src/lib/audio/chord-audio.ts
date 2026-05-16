@@ -1,14 +1,39 @@
-import type { DiatonicChord } from "@/lib/music/chords";
-import { getBassRootKeyId, getKeyRelativeVoicingKeyIds } from "@/lib/music/keyboard";
+import type { DiatonicChord } from "../music/chords";
+import { getBassRootKeyId, getKeyRelativeVoicingKeyIds } from "../music/keyboard";
 
 export const AUDIO_ARTS = ["piano", "pad", "arp", "strings"] as const;
 export type AudioArt = (typeof AUDIO_ARTS)[number];
+export const PLAYBACK_STYLES = [
+  "block",
+  "broken",
+  "pulse",
+  "up",
+  "down",
+  "bounce",
+  "sustain",
+] as const;
+export type PlaybackStyle = (typeof PLAYBACK_STYLES)[number];
+
+export const PLAYBACK_STYLE_OPTIONS: Record<AudioArt, PlaybackStyle[]> = {
+  piano: ["block", "broken", "pulse"],
+  arp: ["up", "down", "bounce"],
+  pad: ["sustain"],
+  strings: ["sustain"],
+};
+
+export const DEFAULT_PLAYBACK_STYLE: Record<AudioArt, PlaybackStyle> = {
+  piano: "block",
+  arp: "up",
+  pad: "sustain",
+  strings: "sustain",
+};
 
 export type AudioSettings = {
   isMuted: boolean;
   volume: number;
   tempo: number;
   audioArt: AudioArt;
+  playbackStyle: PlaybackStyle;
   ambience: number;
 };
 
@@ -134,6 +159,27 @@ export function getChordPlaybackDuration(settings: AudioSettings) {
   return 60 / tempo;
 }
 
+export function getArpFrequencies(frequencies: number[], style: PlaybackStyle) {
+  if (frequencies.length === 0) return [];
+
+  if (style === "down") {
+    return getArpPatternIndexes(frequencies.length, "down").map(
+      (index) => frequencies[index],
+    );
+  }
+
+  if (style === "bounce") {
+    return getArpPatternIndexes(frequencies.length, "bounce").map(
+      (index) => frequencies[index],
+    );
+  }
+
+  return getArpPatternIndexes(frequencies.length, "up").map((index, step) => {
+    const frequency = frequencies[index];
+    return frequencies.length === 3 && step === 3 ? frequency * 2 : frequency;
+  });
+}
+
 export function clampTempo(tempo: number) {
   if (!Number.isFinite(tempo)) return 100;
   return Math.min(MAX_TEMPO, Math.max(MIN_TEMPO, Math.round(tempo)));
@@ -174,6 +220,7 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
 
   if (settings.audioArt === "arp") {
     const stepDuration = 60 / clampTempo(settings.tempo) / 2;
+    const arpFrequencies = getArpFrequencies(frequencies, settings.playbackStyle);
     if (bassRootFrequency) {
       voices.push(
         playTone(audioContext, graph.input, bassRootFrequency, now, {
@@ -183,7 +230,7 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
         }),
       );
     }
-    frequencies.forEach((frequency, index) => {
+    arpFrequencies.forEach((frequency, index) => {
       voices.push(
         playTone(audioContext, graph.input, frequency, now + index * stepDuration, {
           ...preset,
@@ -195,12 +242,105 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
     return voices;
   }
 
+  if (settings.audioArt === "piano" && settings.playbackStyle === "pulse") {
+    const pulseDuration = Math.min(noteDuration, getChordPlaybackDuration(settings) * 0.3);
+    const secondPulseStart = now + getChordPlaybackDuration(settings) * 0.5;
+    if (bassRootFrequency) {
+      voices.push(
+        playTone(audioContext, graph.input, bassRootFrequency, now, {
+          ...preset,
+          attack: 0.01,
+          decay: 0.16,
+          sustain: 0.12,
+          release: 0.18,
+          duration: getChordPlaybackDuration(settings) * 0.82,
+          gain: baseGain * preset.gain * 0.36,
+        }),
+      );
+    }
+    [now, secondPulseStart].forEach((pulseStart) => {
+      frequencies.forEach((frequency, index) => {
+        voices.push(
+          playTone(audioContext, graph.input, frequency, pulseStart + index * 0.004, {
+            ...preset,
+            decay: 0.12,
+            sustain: 0.08,
+            release: 0.16,
+            duration: pulseDuration,
+            gain: baseGain * preset.gain * 0.64,
+          }),
+        );
+      });
+    });
+
+    return voices;
+  }
+
+  voices.push(
+    ...playChordBlock({
+      audioContext,
+      destination: graph.input,
+      frequencies,
+      bassRootFrequency,
+      startTime: now,
+      preset,
+      duration: noteDuration,
+      baseGain,
+      stagger:
+        settings.audioArt === "piano" && settings.playbackStyle === "broken"
+          ? 0.045
+          : preset.stagger,
+    }),
+  );
+
+  return voices;
+}
+
+function getArpPatternIndexes(
+  noteCount: number,
+  style: "up" | "down" | "bounce",
+) {
+  if (noteCount === 1) return [0, 0, 0, 0];
+  if (style === "down") {
+    return noteCount >= 4 ? [3, 2, 1, 0] : [2, 1, 0, 1];
+  }
+  if (style === "bounce") {
+    const top = Math.min(noteCount - 1, 2);
+    return [0, top, 1, top];
+  }
+
+  return noteCount >= 4 ? [0, 1, 2, 3] : [0, 1, 2, 0];
+}
+
+function playChordBlock({
+  audioContext,
+  destination,
+  frequencies,
+  bassRootFrequency,
+  startTime,
+  preset,
+  duration,
+  baseGain,
+  stagger,
+}: {
+  audioContext: AudioContext;
+  destination: AudioNode;
+  frequencies: number[];
+  bassRootFrequency: number | null;
+  startTime: number;
+  preset: InstrumentPreset;
+  duration: number;
+  baseGain: number;
+  stagger: number;
+}) {
+  const voices: AudioVoice[] = [];
+
   if (bassRootFrequency) {
     voices.push(
-      playTone(audioContext, graph.input, bassRootFrequency, now, {
+      playTone(audioContext, destination, bassRootFrequency, startTime, {
         ...preset,
         attack: Math.max(preset.attack, 0.01),
-        duration: noteDuration,
+        duration,
         gain: baseGain * preset.gain * 0.58,
       }),
     );
@@ -208,9 +348,9 @@ export function playChordPreview({ audioContext, chord, rootFloorKey, settings, 
 
   frequencies.forEach((frequency, index) => {
     voices.push(
-      playTone(audioContext, graph.input, frequency, now + index * preset.stagger, {
+      playTone(audioContext, destination, frequency, startTime + index * stagger, {
         ...preset,
-        duration: noteDuration,
+        duration,
         gain: baseGain * preset.gain,
       }),
     );
