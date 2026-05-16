@@ -11,6 +11,16 @@ npm run ci
 
 The static site is written to `out/`.
 
+## Deploy With Rsync
+
+For a plain web server, sync the generated files to the document root:
+
+```bash
+rsync -avz --delete out/ user@example.com:/var/www/rechorder/
+```
+
+The trailing slash on `out/` copies the directory contents. `--delete` removes files from the server that no longer exist in the current build, avoiding stale pages or assets.
+
 ## Provider Settings
 
 Use these settings on static hosts such as Netlify, Cloudflare Pages, Vercel static output, GitHub Pages, or any plain web server:
