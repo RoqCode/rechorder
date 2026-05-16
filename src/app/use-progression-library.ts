@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 
+import type { AudioArt, PlaybackStyle } from "@/lib/audio/chord-audio";
 import type { ChordType, DiatonicChord, MusicMode } from "@/lib/music/chords";
 import type { SavedProgression } from "@/lib/progressions/progression-schema";
 import {
@@ -22,6 +23,10 @@ type SaveProgressionInput = {
   chordType: ChordType;
   chords: DiatonicChord[];
   notes: string;
+  tempo: number;
+  audioArt: AudioArt;
+  playbackStyle: PlaybackStyle;
+  ambience: number;
 };
 
 export function useProgressionLibrary() {

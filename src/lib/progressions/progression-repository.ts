@@ -42,6 +42,10 @@ export async function insertProgression(input: ProgressionInput) {
     chordType: parsedInput.chordType,
     chords: parsedInput.chords,
     notes: parsedInput.notes || null,
+    tempo: parsedInput.tempo,
+    audioArt: parsedInput.audioArt,
+    playbackStyle: parsedInput.playbackStyle,
+    ambience: parsedInput.ambience,
     createdAt: now,
     updatedAt: now,
   });
@@ -68,6 +72,10 @@ export async function updateSavedProgression(input: UpdateProgressionInput) {
     chordType: parsedInput.chordType,
     chords: parsedInput.chords,
     notes: parsedInput.notes || null,
+    tempo: parsedInput.tempo,
+    audioArt: parsedInput.audioArt,
+    playbackStyle: parsedInput.playbackStyle,
+    ambience: parsedInput.ambience,
     updatedAt: new Date().toISOString(),
   });
 
@@ -108,6 +116,10 @@ export async function importSavedProgressions(
         chordType: progression.chordType,
         chords: progression.chords,
         notes: progression.notes ?? "",
+        tempo: progression.tempo,
+        audioArt: progression.audioArt,
+        playbackStyle: progression.playbackStyle,
+        ambience: progression.ambience,
       }),
     );
 
@@ -119,6 +131,10 @@ export async function importSavedProgressions(
       chordType: parsedInput.chordType,
       chords: parsedInput.chords,
       notes: parsedInput.notes || null,
+      tempo: parsedInput.tempo,
+      audioArt: parsedInput.audioArt,
+      playbackStyle: parsedInput.playbackStyle,
+      ambience: parsedInput.ambience,
       createdAt: now,
       updatedAt: now,
     });

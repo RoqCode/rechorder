@@ -19,10 +19,14 @@ describe("validateProgressionInput", () => {
       chordType: "triads",
       chords: validChords.slice(0, 3),
       notes: "",
+      tempo: 100,
+      audioArt: "piano",
+      playbackStyle: "block",
+      ambience: 18,
     }).chords).toHaveLength(3);
   });
 
-  it("defaults voicing controls for older saved chords", () => {
+  it("defaults voicing and audio controls for older saved takes", () => {
     const parsed = progressionInputSchema.parse({
       name: "Test",
       tonic: "C",
@@ -40,6 +44,10 @@ describe("validateProgressionInput", () => {
 
     expect(parsed.chords[0].octaveOffset).toBe(0);
     expect(parsed.chords[0].bassRootOctavesDown).toBe(0);
+    expect(parsed.tempo).toBe(100);
+    expect(parsed.audioArt).toBe("piano");
+    expect(parsed.playbackStyle).toBe("block");
+    expect(parsed.ambience).toBe(18);
   });
 
   it("rejects unsupported tonic and mode combinations", () => {
@@ -50,6 +58,10 @@ describe("validateProgressionInput", () => {
       chordType: "triads",
       chords: validChords.slice(0, 1),
       notes: "",
+      tempo: 100,
+      audioArt: "piano",
+      playbackStyle: "block",
+      ambience: 18,
     })).toThrow("D# ionian is not supported");
   });
 
@@ -61,6 +73,10 @@ describe("validateProgressionInput", () => {
       chordType: "triads",
       chords: [{ degree: 1, romanNumeral: "I", chordName: "D", notes: ["D", "F#", "A"], inversion: 0, octaveOffset: 0, bassRootOctavesDown: 0 }],
       notes: "",
+      tempo: 100,
+      audioArt: "piano",
+      playbackStyle: "block",
+      ambience: 18,
     })).toThrow("Progression contains chords outside the selected key");
   });
 
@@ -72,6 +88,10 @@ describe("validateProgressionInput", () => {
       chordType: "triads",
       chords: [{ ...validChords[0], inversion: 3 }],
       notes: "",
+      tempo: 100,
+      audioArt: "piano",
+      playbackStyle: "block",
+      ambience: 18,
     })).toThrow("Progression contains an inversion outside the chord range");
   });
 
@@ -93,5 +113,20 @@ describe("validateProgressionInput", () => {
       chords: [{ ...validChords[0], bassRootOctavesDown: 3 }],
       notes: "",
     })).toThrow();
+  });
+
+  it("rejects playback styles outside the selected instrument", () => {
+    expect(() => validateProgressionInput({
+      name: "Test",
+      tonic: "C",
+      mode: "ionian",
+      chordType: "triads",
+      chords: validChords.slice(0, 1),
+      notes: "",
+      tempo: 100,
+      audioArt: "arp",
+      playbackStyle: "block",
+      ambience: 18,
+    })).toThrow("Playback style is not available for the selected instrument");
   });
 });

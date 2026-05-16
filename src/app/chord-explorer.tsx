@@ -346,6 +346,10 @@ export function ChordExplorer() {
         chordType,
         chords: progression,
         notes: progressionNotes.trim(),
+        tempo,
+        audioArt,
+        playbackStyle,
+        ambience,
       },
       (saved) => {
         setLoadedProgressionId(saved.id);
@@ -370,6 +374,10 @@ export function ChordExplorer() {
     loadProgression(saved.chords);
     setProgressionName(saved.name);
     setProgressionNotes(saved.notes ?? "");
+    setTempo(saved.tempo);
+    setAudioArt(saved.audioArt);
+    setPlaybackStyle(saved.playbackStyle);
+    setAmbience(saved.ambience);
     setLoadedProgressionId(saved.id);
     setSelectedDegree(saved.chords[0]?.degree ?? null);
     setFocusedChord(saved.chords[0] ?? null);
